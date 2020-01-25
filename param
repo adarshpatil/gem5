@@ -1,0 +1,13 @@
+--ruby
+--network=simple
+--topology=Mesh_XY
+--num-dirs=8
+--num-cpus=16
+--num-l2caches=8
+--l1d_size=16kB
+--l1i_size=16kB
+--l2_size=128kB
+--num-threads=16
+--mem-size=8096MB
+--mesh-rows=16
+--event-dir=/afs/inf.ed.ac.uk/group/project/dramrep/traces/16t-comd

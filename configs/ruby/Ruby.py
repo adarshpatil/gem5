@@ -136,6 +136,9 @@ def setup_memory_controllers(system, ruby, dir_cntrls, options):
                         options.enable_dram_powerdown
 
         index += 1
+
+       # ADARSH: Here the address range for the directory is set after creating
+       # the corresponding mem_ctrl
         dir_cntrl.addr_ranges = dir_ranges
 
     system.mem_ctrls = mem_ctrls

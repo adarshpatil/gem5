@@ -334,8 +334,11 @@ RubyPort::MemSlavePort::recvAtomic(PacketPtr pkt)
     // This assumes that protocols have a Directory machine,
     // which has its memPort hooked up to memory. This can
     // fail for some custom protocols.
+    // ADARSH fix the version here
+    // we dont know who calls who calls this func
     MachineID id = ruby_port->m_controller->mapAddressToMachine(
-                    pkt->getAddr(), MachineType_Directory);
+                    pkt->getAddr(), MachineType_Directory,
+                    ruby_port->m_version);
     RubySystem *rs = ruby_port->m_ruby_system;
     AbstractController *directory =
         rs->m_abstract_controls[id.getType()][id.getNum()];

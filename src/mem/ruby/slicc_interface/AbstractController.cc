@@ -363,10 +363,15 @@ AbstractController::recvAtomic(PacketPtr pkt)
 }
 
 MachineID
-AbstractController::mapAddressToMachine(Addr addr, MachineType mtype) const
+AbstractController::mapAddressToMachine(Addr addr, MachineType mtype,
+                                        NodeID id) const
 {
-    NodeID node = m_net_ptr->addressToNodeID(addr, mtype);
-    MachineID mach = {mtype, node};
+    //NodeID node = m_net_ptr->addressToNodeID(addr, mtype);
+    //MachineID mach = {mtype, node};
+
+    // ADARSH assuming there are equal num of l2 caches and directories
+    // at the moment id is the callers version / nodeid
+    MachineID mach = {mtype, id/4};
     return mach;
 }
 
