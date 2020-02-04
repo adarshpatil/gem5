@@ -102,6 +102,10 @@ def addSynchrotraceOptions(parser):
     parser.add_option("--barrier-stat-dump", action="store_true",
                       default=False,
                       help="Dump stats to stats.txt following each barrier")
+    parser.add_option("--warmup-ops", type="long", default=0,
+                      help="Number of warmup ops to simulate")
+    parser.add_option("--detailed-ops", type="long", default=0,
+                      help="Number of detailed ops to simulate")
     parser.add_option("--monitor-freq", type="int", default=1,
                       help="Frequency at which to wake up monitor event")
     parser.add_option("--cpi-iops", type="float", default=1,
@@ -139,4 +143,7 @@ class SynchroTraceReplayer(MemObject):
     start_sync_region = Param.Int("Start of synchronization region")
     inst_sync_region = Param.Int("Synchronization region to instrument")
     barrier_stat_dump = Param.Bool("Option to dump stats after barriers")
+    warmup_ops = Param.UInt64(20000000, "Number of warmup ops to simulate")
+    # detailed_ops = 0 means simulate till end of program
+    detailed_ops = Param.UInt64(0, "Number of detailed ops to simulate")
     system = Param.System(Parent.any, "System we belong to")

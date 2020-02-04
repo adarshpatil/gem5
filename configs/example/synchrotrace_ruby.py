@@ -89,10 +89,10 @@ Options.addCommonOptions(parser)
 Ruby.define_options(parser)
 
 # Required to configure Ruby
-parser.add_option("--buffers-per-data-vc", type="int", default=4,
-                  help="Buffer Depth per Virtual Channel")
-parser.add_option("--bandwidth-factor", type="int", default=16,
-                  help="Number of Virtual Channels per Network")
+#parser.add_option("--buffers-per-data-vc", type="int", default=4,
+#                  help="Buffer Depth per Virtual Channel")
+#parser.add_option("--bandwidth-factor", type="int", default=16,
+#                  help="Number of Virtual Channels per Network")
 parser.add_option("--l1-latency", action="store", type="int", default="3",
                   help="Latency of a L1 Hit")
 
@@ -110,6 +110,8 @@ tester = SynchroTraceReplayer(num_cpus=options.num_cpus,
                               monitor_wakeup_freq=options.monitor_freq,
                               cpi_iops=options.cpi_iops,
                               cpi_flops=options.cpi_flops,
+                              warmup_ops=options.warmup_ops,
+                              detailed_ops=options.detailed_ops,
                               ruby=options.ruby,
                               block_size_bytes=options.cacheline_size,
                               mem_size_bytes=toMemorySize(options.mem_size),
@@ -148,13 +150,13 @@ for mem_ctrl in system.mem_ctrls:
     mem_ctrl.clk_domain = memsys_clk_domain
 
 # Use SynchroTrace options for garnet parameters
-system.ruby.network.vcs_per_vnet = options.vcs_per_vnet
-system.ruby.network.buffers_per_data_vc = options.buffers_per_data_vc
-system.ruby.network.ni_flit_size = options.bandwidth_factor
-for link in system.ruby.network.int_links:
-    link.bandwidth_factor = options.bandwidth_factor
-for link in system.ruby.network.ext_links:
-    link.bandwidth_factor = options.bandwidth_factor
+#system.ruby.network.vcs_per_vnet = options.vcs_per_vnet
+#system.ruby.network.buffers_per_data_vc = options.buffers_per_data_vc
+#system.ruby.network.ni_flit_size = options.bandwidth_factor
+#for link in system.ruby.network.int_links:
+    #link.bandwidth_factor = options.bandwidth_factor
+#for link in system.ruby.network.ext_links:
+    #link.bandwidth_factor = options.bandwidth_factor
 
 # Setup simulation
 root = Root( full_system = False, system = system )

@@ -68,6 +68,8 @@ SynchroTraceReplayer::SynchroTraceReplayer(const Params *p)
     numThreads(p->num_threads),
     numContexts(std::min(p->num_threads, p->num_cpus)),
     barrStatDump(p->barrier_stat_dump),
+    warmup_ops(p->warmup_ops),
+    detailed_ops(p->detailed_ops),
     eventDir(p->event_dir),
     outDir(p->output_dir),
     CPI_IOPS(p->cpi_iops),
@@ -113,11 +115,30 @@ SynchroTraceReplayer::SynchroTraceReplayer(const Params *p)
              "number of cpus expected to be power of 2, but got %d",
              numCpus);
 
+    inform("warmup ops: %d, detailed ops: %d \n", warmup_ops, detailed_ops);
+
     // Initialize the ports to the rest of the system
     for (CoreID i = 0; i < numCpus; i++)
         ports.emplace_back(csprintf("%s-port%d", name(), i), *this, i);
 }
 
+void
+SynchroTraceReplayer::regStats()
+{
+    using namespace Stats;
+    MemObject::regStats();
+    num_iops
+        .name (name() + ".num_iops")
+        .desc ("Number of IOPS");
+
+    num_flops
+        .name (name() + ".num_flops")
+        .desc ("Number of FLOPS");
+
+    num_mem
+        .name (name() + ".num_mem")
+        .desc ("Number of memory ops");
+}
 void
 SynchroTraceReplayer::init()
 {
@@ -181,11 +202,37 @@ SynchroTraceReplayer::getPort(const std::string& if_name, PortID idx)
 void
 SynchroTraceReplayer::wakeupMonitor()
 {
-    // Terminates the simulation if all the threads are done
-    if (std::all_of(threadContexts.cbegin(), threadContexts.cend(),
+    // ADARSH logic for switching from (FF) to (W)armup to (D)etailed
+    // FF in_warmup==false in_detailed==false
+    // W in_warmup==true in_detailed==false
+    // D in_warmup==false in_detailed==true
+    if (in_warmup && !in_detailed &&
+         (num_iops.value() + num_flops.value() + num_mem.value()) >= warmup_ops)
+    {
+        inform("warmup completed after %d ops", num_iops.value() + num_flops.value() + num_mem.value());
+        // dump and reset stats after warmup
+        Stats::schedStatEvent(true, true, curTick(), 0);
+
+        // mark in_warmup false and in_detailed true
+        in_warmup = false; in_detailed = true;
+    }
+    else if (!in_warmup && in_detailed)
+    {
+        // detailed_ops == 0 means simulate till end of program
+        if(detailed_ops != 0 &&
+           (num_iops.value() + num_flops.value() + num_mem.value()) >= detailed_ops )
+        {
+            inform("%d detailed ops completed",num_iops.value() + num_flops.value() + num_mem.value());
+            exitSimLoop("SynchroTrace detailed ops completed");
+
+        }
+        // Terminates the simulation if all the threads are done
+        else if (std::all_of(threadContexts.cbegin(), threadContexts.cend(),
                     [](const ThreadContext& tcxt)
                     { return tcxt.completed(); }))
-        exitSimLoop("SynchroTrace completed");
+            exitSimLoop("SynchroTrace application completed");
+    }
+
 
     // Prints thread status every hour
     if (DTRACE(STIntervalPrintByHour) &&
@@ -301,6 +348,8 @@ SynchroTraceReplayer::replayCompute(ThreadContext& tcxt, CoreID coreId)
 
     // simulate time for the iops/flops
     const ComputeOps& ops = tcxt.evStream.peek().computeOps;
+    num_iops += ops.iops;
+    num_flops += ops.flops;
     schedule(coreEvents[coreId],
              curTick() + clockPeriod() +
              (clockPeriod() * (Cycles(CPI_IOPS * ops.iops) +
@@ -315,6 +364,7 @@ SynchroTraceReplayer::replayMemory(ThreadContext& tcxt, CoreID coreId)
 
     // Send the load/store
     const StEvent& ev = tcxt.evStream.peek();
+    num_mem++;
     msgReqSend(coreId,
                ev.memoryReq.addr,
                ev.memoryReq.bytesRequested,
@@ -378,11 +428,19 @@ SynchroTraceReplayer::replayThreadAPI(ThreadContext& tcxt, CoreID coreId)
     const StEvent& ev = tcxt.evStream.peek();
     const Addr pthAddr = ev.threadApi.pthAddr;
 
+    // ADARSH eventType  and current status
+    // MUTEX_LOCK, MUTEX_UNLOCK, - commented
+    // THREAD_CREATE, THREAD_JOIN, - retained
+    // BARRIER_WAIT, - commented
+    // COND_WAIT, COND_SG/_BR, - commented
+    // SPIN_LOCK, SPIN_UNLOCK - commented
+    // or unimplemented events
     switch (ev.threadApi.eventType)
     {
     // Lock/unlock
     case ThreadApi::EventType::MUTEX_LOCK:
     {
+#if 0
         auto p = mutexLocks.insert(pthAddr);
         if (p.second)
         {
@@ -407,10 +465,13 @@ SynchroTraceReplayer::replayThreadAPI(ThreadContext& tcxt, CoreID coreId)
                 schedule(coreEvents[coreId],
                          curTick() + clockPeriod() * Cycles(schedSliceCycles));
         }
+#endif
+        tcxt.evStream.pop();
     }
         break;
     case ThreadApi::EventType::MUTEX_UNLOCK:
     {
+#if 0
         std::vector<Addr>& locksHeld = perThreadLocksHeld[tcxt.threadId];
         auto s_it = mutexLocks.find(pthAddr);
         auto v_it = std::find(locksHeld.begin(), locksHeld.end(), pthAddr);
@@ -430,6 +491,9 @@ SynchroTraceReplayer::replayThreadAPI(ThreadContext& tcxt, CoreID coreId)
         tcxt.evStream.pop();
         schedule(coreEvents[coreId],
                  curTick() + clockPeriod() * Cycles(pthCycles));
+#endif
+        tcxt.evStream.pop();
+
     }
         break;
 
@@ -443,7 +507,14 @@ SynchroTraceReplayer::replayThreadAPI(ThreadContext& tcxt, CoreID coreId)
         if (!roiFlag)
         {
             roiFlag = true;
-            DPRINTF(ROI, "Reached parallel region");
+            // ADARSH TODO trigger sim switch from fast fwd to detailed
+            // ruby doesn't support atomic access (fast fwd)
+            // take checkpoint?
+            inform("Reached parallel region, dump and reset stats\n");
+            // reset and dump stats before parallel region
+            Stats::schedStatEvent(true, true, curTick(), 0);
+            // warmup region starts
+            in_warmup = true;
         }
 
         workerThreadCount++;
@@ -533,6 +604,7 @@ SynchroTraceReplayer::replayThreadAPI(ThreadContext& tcxt, CoreID coreId)
     // Barriers
     case ThreadApi::EventType::BARRIER_WAIT:
     {
+#if 0
         auto p = threadBarrierMap[pthAddr].insert(tcxt.threadId);
         fatal_if(p.second, "Thread %d already waiting in barrier <0x%X>",
                  tcxt.threadId,
@@ -567,6 +639,9 @@ SynchroTraceReplayer::replayThreadAPI(ThreadContext& tcxt, CoreID coreId)
                 schedule(coreEvents[coreId],
                          curTick() + clockPeriod() * Cycles(schedSliceCycles));
         }
+#endif
+        // ADARSH skip barrier wait
+        tcxt.evStream.pop();
     }
         break;
 
@@ -591,6 +666,7 @@ SynchroTraceReplayer::replayThreadAPI(ThreadContext& tcxt, CoreID coreId)
     // TODO(someday) reimplement correctly
     case ThreadApi::EventType::COND_WAIT:
     {
+#if 0
         // unlock the mutex required for the wait
         const Addr mtx = {ev.threadApi.mutexLockAddr};
         const size_t erased = mutexLocks.erase(mtx);
@@ -616,11 +692,14 @@ SynchroTraceReplayer::replayThreadAPI(ThreadContext& tcxt, CoreID coreId)
                 schedule(coreEvents[coreId],
                          curTick() + clockPeriod() * Cycles(schedSliceCycles));
         }
+#endif
+        tcxt.evStream.pop();
     }
         break;
     case ThreadApi::EventType::COND_SG:
     case ThreadApi::EventType::COND_BR:
     {
+#if 0
         panic_if(tcxt.status != ThreadStatus::ACTIVE,
                  "Thread %d is signaling/broadcasting, "
                  "but isn't event ACTIVE!",
@@ -636,6 +715,8 @@ SynchroTraceReplayer::replayThreadAPI(ThreadContext& tcxt, CoreID coreId)
         tcxt.evStream.pop();
         schedule(coreEvents[coreId],
                  curTick() + clockPeriod() * Cycles(pthCycles));
+#endif
+        tcxt.evStream.pop();
     }
         break;
 
@@ -644,6 +725,7 @@ SynchroTraceReplayer::replayThreadAPI(ThreadContext& tcxt, CoreID coreId)
     // However, an event is not necessarily completed.
     case ThreadApi::EventType::SPIN_LOCK:
     {
+#if 0
         panic_if(tcxt.status != ThreadStatus::ACTIVE,
                  "Thread %d is spinlocking, but isn't event ACTIVE!",
                  tcxt.threadId);
@@ -655,10 +737,13 @@ SynchroTraceReplayer::replayThreadAPI(ThreadContext& tcxt, CoreID coreId)
         // If the lock wasn't acquired, we spin and try again the next cycle.
         schedule(coreEvents[coreId],
                  curTick() + clockPeriod() * Cycles(pthCycles));
+#endif
+        tcxt.evStream.pop();
     }
         break;
     case ThreadApi::EventType::SPIN_UNLOCK:
     {
+#if 0
         panic_if(tcxt.status != ThreadStatus::ACTIVE,
                  "Thread %d is spinunlocking, but isn't event ACTIVE!",
                  tcxt.threadId);
@@ -674,6 +759,8 @@ SynchroTraceReplayer::replayThreadAPI(ThreadContext& tcxt, CoreID coreId)
         tcxt.evStream.pop();
         schedule(coreEvents[coreId],
                  curTick() + clockPeriod() * Cycles(pthCycles));
+#endif
+        tcxt.evStream.pop();
     }
         break;
 

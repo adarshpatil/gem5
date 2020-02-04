@@ -154,6 +154,13 @@ class SynchroTraceReplayer : public MemObject
 {
   public:
 
+    // ADARSH stats for num instructions
+    Stats::Scalar num_iops;
+    Stats::Scalar num_flops;
+    Stats::Scalar num_mem;
+
+    void regStats();
+
     using CoreID = PortID;
 
     class CpuPort : public MasterPort
@@ -429,6 +436,13 @@ class SynchroTraceReplayer : public MemObject
 
     /** Option to dump stats following each barrier */
     bool barrStatDump;
+
+    /** ADARSH number of ops (~=insts) to simulate */
+    uint64_t warmup_ops;
+    uint64_t detailed_ops;
+    // bool variables indicating which phase is currently executing
+    bool in_warmup = false;
+    bool in_detailed = false;
 
     /** Directory of Sigil Traces and Pthread metadata file */
     std::string eventDir;

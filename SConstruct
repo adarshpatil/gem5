@@ -181,6 +181,16 @@ if GetOption('no_lto') and GetOption('force_lto'):
 
 main = Environment()
 
+########################################################################
+## ADARSH Use gcc740 installed localling using gsrc in $AFS_HOME/opt/GNU
+##print(main['CC'])
+##print(main['CXX'])
+main.Replace( CC = "gcc740" )
+main.Replace( CXX = "g++740" )
+##print(main['CC'])
+#print(main['CXX'])
+#########################################################################
+
 from gem5_scons import Transform
 from gem5_scons.util import get_termcap
 termcap = get_termcap()
@@ -364,7 +374,7 @@ if main['GCC'] + main['CLANG'] > 1:
 # Set up default C++ compiler flags
 if main['GCC'] or main['CLANG']:
     # As gcc and clang share many flags, do the common parts here
-    main.Append(CCFLAGS=['-pipe'])
+    main.Append(CCFLAGS=['-pipe', '-static'])
     main.Append(CCFLAGS=['-fno-strict-aliasing'])
     # Enable -Wall and -Wextra and then disable the few warnings that
     # we consistently violate
