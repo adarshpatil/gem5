@@ -4,7 +4,7 @@ set -x
 AFS_HOME=/afs/inf.ed.ac.uk/user/s18/s1897969
 AFS_PROJ=/afs/inf.ed.ac.uk/group/project/dramrep
 
-# only for parsec we have this array
+# only for parsec and splash we have this array
 # lulesh, graph500, comd, xsbench have inline threads
 declare -A parsec_bench_threads=( 
 ["blackscholes"]="17" ["bodytrack"]="18" ["canneal"]="17" 
@@ -23,7 +23,7 @@ bench=$1
 if [ $bench == "lulesh" ]
 then
 # lulesh
-$AFS_HOME/gem5/build/X86_MESI_Two_Level/gem5.opt -r -e --outdir=$AFS_PROJ/results/meshdir-simple/lulesh --debug-flags=ROI configs/example/synchrotrace_ruby.py \
+$AFS_HOME/gem5/build/X86_MESI_Two_Level/gem5.opt -r -e --outdir=$AFS_PROJ/results/meshdir-simple/lulesh --debug-flags=ROI,STIntervalPrintByHour configs/example/synchrotrace_ruby.py \
 --event-dir=$AFS_PROJ/traces/16t-lulesh \
 --output-dir=$AFS_PROJ/results/meshdir-simple/lulesh \
 --ruby \
@@ -46,7 +46,7 @@ $AFS_HOME/gem5/build/X86_MESI_Two_Level/gem5.opt -r -e --outdir=$AFS_PROJ/result
 elif [ $bench == "comd" ]
 then
 # comd
-$AFS_HOME/gem5/build/X86_MESI_Two_Level/gem5.opt -r -e --outdir=$AFS_PROJ/results/meshdir-simple/comd --debug-flags=ROI configs/example/synchrotrace_ruby.py \
+$AFS_HOME/gem5/build/X86_MESI_Two_Level/gem5.opt -r -e --outdir=$AFS_PROJ/results/meshdir-simple/comd --debug-flags=ROI,STIntervalPrintByHour configs/example/synchrotrace_ruby.py \
 --event-dir=$AFS_PROJ/traces/16t-comd \
 --output-dir=$AFS_PROJ/results/meshdir-simple/comd \
 --ruby \
@@ -69,7 +69,7 @@ $AFS_HOME/gem5/build/X86_MESI_Two_Level/gem5.opt -r -e --outdir=$AFS_PROJ/result
 elif [ $bench == "graph500" ]
 then
 # graph500 - for now using 16t-graph-s14, revert back to 16t-graph
-$AFS_HOME/gem5/build/X86_MESI_Two_Level/gem5.opt -r -e --outdir=$AFS_PROJ/results/meshdir-simple/graph500 --debug-flags=ROI configs/example/synchrotrace_ruby.py \
+$AFS_HOME/gem5/build/X86_MESI_Two_Level/gem5.opt -r -e --outdir=$AFS_PROJ/results/meshdir-simple/graph500 --debug-flags=ROI,STIntervalPrintByHour configs/example/synchrotrace_ruby.py \
 --event-dir=$AFS_PROJ/traces/16t-graph500-s14 \
 --output-dir=$AFS_PROJ/results/meshdir-simple/graph500 \
 --ruby \
@@ -92,7 +92,7 @@ $AFS_HOME/gem5/build/X86_MESI_Two_Level/gem5.opt -r -e --outdir=$AFS_PROJ/result
 elif [ $bench == "xsbench" ]
 then
 # xsbench
-$AFS_HOME/gem5/build/X86_MESI_Two_Level/gem5.opt -r -e --outdir=$AFS_PROJ/results/meshdir-simple/xsbench --debug-flags=ROI configs/example/synchrotrace_ruby.py \
+$AFS_HOME/gem5/build/X86_MESI_Two_Level/gem5.opt -r -e --outdir=$AFS_PROJ/results/meshdir-simple/xsbench --debug-flags=ROI,STIntervalPrintByHour configs/example/synchrotrace_ruby.py \
 --event-dir=$AFS_PROJ/traces/16t-small-xsbench \
 --output-dir=$AFS_PROJ/results/meshdir-simple/xsbench \
 --ruby \
@@ -115,7 +115,7 @@ $AFS_HOME/gem5/build/X86_MESI_Two_Level/gem5.opt -r -e --outdir=$AFS_PROJ/result
 elif [[ ${parsec_bench_threads[$bench]} ]]
 then
 # must be one of the parsec benchmarks
-$AFS_HOME/gem5/build/X86_MESI_Two_Level/gem5.opt -r -e --outdir=$AFS_PROJ/results/meshdir-simple/$bench --debug-flags=ROI configs/example/synchrotrace_ruby.py \
+$AFS_HOME/gem5/build/X86_MESI_Two_Level/gem5.opt -r -e --outdir=$AFS_PROJ/results/meshdir-simple/$bench --debug-flags=ROI,STIntervalPrintByHour configs/example/synchrotrace_ruby.py \
 --event-dir=$AFS_PROJ/traces/16t-large-roi-parsec/$bench \
 --output-dir=$AFS_PROJ/results/meshdir-simple/$bench \
 --ruby \
@@ -143,7 +143,7 @@ then
 #       #--event-dir=/disk/scratch/s1897969/traces/16t-large-roi-splash/$bench \
 # afs has cholesky, watern2, fft, barnes
 #	#--event-dir=$AFS_PROJ/traces/16t-large-roi-splash/$bench \
-$AFS_HOME/gem5/build/X86_MESI_Two_Level/gem5.opt -r -e --outdir=$AFS_PROJ/results/meshdir-simple/$bench --debug-flags=ROI configs/example/synchrotrace_ruby.py \
+$AFS_HOME/gem5/build/X86_MESI_Two_Level/gem5.opt -r -e --outdir=$AFS_PROJ/results/meshdir-simple/$bench --debug-flags=ROI,STIntervalPrintByHour configs/example/synchrotrace_ruby.py \
 --event-dir=$AFS_PROJ/traces/16t-large-roi-splash/$bench \
 --output-dir=$AFS_PROJ/results/meshdir-simple/$bench \
 --ruby \

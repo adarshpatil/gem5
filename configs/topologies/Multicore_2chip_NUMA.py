@@ -13,7 +13,7 @@ from .BaseTopology import SimpleTopology
 # XY routing is enforced (using link weights) to guarantee deadlock freedom.
 
 class Multicore_2chip_NUMA(SimpleTopology):
-    description='Multicore_2chips_NUMA'
+    description='Multicore_2chip_NUMA'
     num_numa_nodes = 2
 
     def __init__(self, controllers):
@@ -117,6 +117,9 @@ class Multicore_2chip_NUMA(SimpleTopology):
                                              dst_inport="West",
                                              latency = link_latency,
                                              weight=1))
+		    print_connection("Router ", get_router_id(routers[east_out]),
+				     "Router ", get_router_id(routers[west_in]),
+				     link_count)
                     link_count += 1
 
         # West output to East input links (weight = 1)
@@ -132,12 +135,15 @@ class Multicore_2chip_NUMA(SimpleTopology):
                                              dst_inport="East",
                                              latency = link_latency,
                                              weight=1))
+		    print_connection("Router ", get_router_id(routers[west_out]),
+				     "Router ", get_router_id(routers[east_in]),
+				     link_count)
                     link_count += 1
 
         # North output to South input links (weight = 2)
         for col in range(num_columns):
             for row in range(num_rows):
-                if ( ((row + 1) < num_rows) && ((row + 1) != (num_rows/2)) ):
+                if ( ((row + 1) < num_rows) and ((row + 1) != (num_rows/2)) ):
                     north_out = col + (row * num_columns)
                     south_in = col + ((row + 1) * num_columns)
                     int_links.append(IntLink(link_id=link_count,
@@ -147,12 +153,15 @@ class Multicore_2chip_NUMA(SimpleTopology):
                                              dst_inport="South",
                                              latency = link_latency,
                                              weight=2))
+		    print_connection("Router ", get_router_id(routers[north_out]),
+				     "Router ", get_router_id(routers[south_in]),
+				     link_count)
                     link_count += 1
 
         # South output to North input links (weight = 2)
         for col in range(num_columns):
             for row in range(num_rows):
-                if ( ((row + 1) < num_rows) && ((row + 1) != (num_rows/2)) ):
+                if ( ((row + 1) < num_rows) and ((row + 1) != (num_rows/2)) ):
                     north_in = col + (row * num_columns)
                     south_out = col + ((row + 1) * num_columns)
                     int_links.append(IntLink(link_id=link_count,
@@ -162,6 +171,9 @@ class Multicore_2chip_NUMA(SimpleTopology):
                                              dst_inport="North",
                                              latency = link_latency,
                                              weight=2))
+		    print_connection("Router ", get_router_id(routers[south_out]),
+				     "Router ", get_router_id(routers[north_in]),
+				     link_count)
                     link_count += 1
 
         # create QPI link North to south and south to north
@@ -176,6 +188,9 @@ class Multicore_2chip_NUMA(SimpleTopology):
                                              dst_inport="South",
                                              latency = qpi_link_latency,
                                              weight=2))
+        print_connection("Router ", get_router_id(routers[north]),
+			 "Router ", get_router_id(routers[south]),
+			 link_count)
         link_count += 1
         int_links.append(IntLink(link_id=link_count,
                                     src_node=routers[south],
@@ -184,8 +199,19 @@ class Multicore_2chip_NUMA(SimpleTopology):
                                     dst_inport="North",
                                     latency = qpi_link_latency,
                                     weight=2))
+        print_connection("Router ", get_router_id(routers[south]),
+		         "Router ", get_router_id(routers[north]),
+			 link_count)
         link_count += 1        
 
         int_links.append
 
         network.int_links = int_links
+
+def get_router_id(node) :
+    return str(node).split('.')[3].split('routers')[1]
+
+
+def print_connection(src_type, src_id, dst_type, dst_id, link_id):
+    print (str(src_type) + "-" + str(src_id) + " connected to " + \
+          str(dst_type) + "-" + str(dst_id) + " via Link-" + str(link_id))

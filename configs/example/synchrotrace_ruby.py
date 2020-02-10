@@ -71,6 +71,7 @@ addToPath('../')
 from common import Options
 from common import MemConfig
 from ruby import Ruby
+from datetime import datetime
 
 # Get relevant paths
 config_path = os.path.dirname(os.path.abspath(__file__))
@@ -168,4 +169,5 @@ m5.instantiate()
 # simulate until program terminates
 exit_event = m5.simulate(options.abs_max_tick)
 
-print('Exiting @ tick', m5.curTick(), 'because', exit_event.getCause())
+# ADARSH
+print('Time: ', datetime.now().strftime("%b %e %Y %X"), ' Exiting @ tick', m5.curTick(), 'because', exit_event.getCause())

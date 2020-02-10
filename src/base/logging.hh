@@ -51,6 +51,8 @@
 
 #include "base/compiler.hh"
 #include "base/cprintf.hh"
+//ADARSH
+#include <time.h>
 
 class Logger
 {
@@ -62,6 +64,8 @@ class Logger
     static Logger &getWarn();
     static Logger &getInfo();
     static Logger &getHack();
+
+    time_t log_time;
 
     enum LogLevel {
         PANIC, FATAL, WARN, INFO, HACK,
@@ -96,7 +100,8 @@ class Logger
     print(const Loc &loc, const std::string &str)
     {
         std::stringstream ss;
-        ss << prefix << str;
+        time(&log_time);
+        ss << prefix << ctime(&log_time) << str;
         if (str.length() && str.back() != '\n' && str.back() != '\r')
             ss << std::endl;
         if (!enabled)

@@ -206,10 +206,10 @@ SynchroTraceReplayer::wakeupMonitor()
     // FF in_warmup==false in_detailed==false
     // W in_warmup==true in_detailed==false
     // D in_warmup==false in_detailed==true
-    if (in_warmup && !in_detailed &&
-         (num_iops.value() + num_flops.value() + num_mem.value()) >= warmup_ops)
+    uint64_t total_ops = num_iops.value() + num_flops.value() + num_mem.value();
+    if (in_warmup && !in_detailed && (total_ops >= warmup_ops))
     {
-        inform("warmup completed after %d ops", num_iops.value() + num_flops.value() + num_mem.value());
+        inform("warmup completed after %d ops", total_ops);
         // dump and reset stats after warmup
         Stats::schedStatEvent(true, true, curTick(), 0);
 
@@ -219,10 +219,9 @@ SynchroTraceReplayer::wakeupMonitor()
     else if (!in_warmup && in_detailed)
     {
         // detailed_ops == 0 means simulate till end of program
-        if(detailed_ops != 0 &&
-           (num_iops.value() + num_flops.value() + num_mem.value()) >= detailed_ops )
+        if(detailed_ops != 0 && (total_ops >= detailed_ops))
         {
-            inform("%d detailed ops completed",num_iops.value() + num_flops.value() + num_mem.value());
+            inform("%d detailed ops completed", total_ops);
             exitSimLoop("SynchroTrace detailed ops completed");
 
         }
@@ -233,7 +232,6 @@ SynchroTraceReplayer::wakeupMonitor()
             exitSimLoop("SynchroTrace application completed");
     }
 
-
     // Prints thread status every hour
     if (DTRACE(STIntervalPrintByHour) &&
         std::difftime(std::time(NULL), hourCounter) >= 60)
@@ -242,6 +240,7 @@ SynchroTraceReplayer::wakeupMonitor()
         DPRINTFN("%s", std::ctime(&hourCounter));
         for (const auto& cxt : threadContexts)
             DPRINTFN("Thread<%d>:Event<%d>\n", cxt.threadId, cxt.currEventId);
+        DPRINTFN("total_ops: %d\n", total_ops);
     }
 
     // Reschedule self
@@ -390,6 +389,7 @@ SynchroTraceReplayer::replayComm(ThreadContext& tcxt, CoreID coreId)
         (isCommDependencyBlocked(ev.memoryReqComm) ||
          !perThreadLocksHeld[tcxt.threadId].empty()))
     {
+        num_mem++;
         // If dependencies have been met, trigger the read reqeust.
         msgReqSend(coreId,
                    ev.memoryReqComm.addr,
@@ -467,6 +467,8 @@ SynchroTraceReplayer::replayThreadAPI(ThreadContext& tcxt, CoreID coreId)
         }
 #endif
         tcxt.evStream.pop();
+        schedule(coreEvents[coreId],
+                     curTick() + clockPeriod() * Cycles(pthCycles));
     }
         break;
     case ThreadApi::EventType::MUTEX_UNLOCK:
@@ -493,6 +495,8 @@ SynchroTraceReplayer::replayThreadAPI(ThreadContext& tcxt, CoreID coreId)
                  curTick() + clockPeriod() * Cycles(pthCycles));
 #endif
         tcxt.evStream.pop();
+        schedule(coreEvents[coreId],
+                 curTick() + clockPeriod() * Cycles(pthCycles));
 
     }
         break;
@@ -642,6 +646,8 @@ SynchroTraceReplayer::replayThreadAPI(ThreadContext& tcxt, CoreID coreId)
 #endif
         // ADARSH skip barrier wait
         tcxt.evStream.pop();
+        schedule(coreEvents[coreId],
+                     curTick() + clockPeriod() * Cycles(pthCycles));
     }
         break;
 
@@ -694,6 +700,8 @@ SynchroTraceReplayer::replayThreadAPI(ThreadContext& tcxt, CoreID coreId)
         }
 #endif
         tcxt.evStream.pop();
+        schedule(coreEvents[coreId],
+                     curTick() + clockPeriod() * Cycles(pthCycles));
     }
         break;
     case ThreadApi::EventType::COND_SG:
@@ -717,6 +725,8 @@ SynchroTraceReplayer::replayThreadAPI(ThreadContext& tcxt, CoreID coreId)
                  curTick() + clockPeriod() * Cycles(pthCycles));
 #endif
         tcxt.evStream.pop();
+        schedule(coreEvents[coreId],
+                 curTick() + clockPeriod() * Cycles(pthCycles));
     }
         break;
 
@@ -739,6 +749,8 @@ SynchroTraceReplayer::replayThreadAPI(ThreadContext& tcxt, CoreID coreId)
                  curTick() + clockPeriod() * Cycles(pthCycles));
 #endif
         tcxt.evStream.pop();
+        schedule(coreEvents[coreId],
+                 curTick() + clockPeriod() * Cycles(pthCycles));
     }
         break;
     case ThreadApi::EventType::SPIN_UNLOCK:
@@ -761,6 +773,8 @@ SynchroTraceReplayer::replayThreadAPI(ThreadContext& tcxt, CoreID coreId)
                  curTick() + clockPeriod() * Cycles(pthCycles));
 #endif
         tcxt.evStream.pop();
+        schedule(coreEvents[coreId],
+                 curTick() + clockPeriod() * Cycles(pthCycles));
     }
         break;
 
