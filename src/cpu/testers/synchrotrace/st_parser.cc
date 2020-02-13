@@ -61,6 +61,7 @@
 
 #include "scn/scn.h"
 #include "st_parser.hh"
+#include "debug/STDebug.hh"
 
 
 constexpr StEvent::ComputeTagType StEvent::ComputeTag;
@@ -557,6 +558,7 @@ StTracePthreadMetadata::parseAddressToID(std::string& line)
     // Keep Thread IDs in a map.
     // The trace has base-1 thread ids, but replay expects base-0.
     auto p = m_addressToIdMap.insert({pthAddr, threadId - 1});
+    DPRINTF(STDebug,"pthAddr:%d threadId:%d\n", pthAddr, threadId);
     assert(p.second);
 }
 

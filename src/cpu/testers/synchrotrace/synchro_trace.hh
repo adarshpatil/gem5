@@ -201,6 +201,11 @@ class SynchroTraceReplayer : public MemObject
 
         virtual void recvReqRetry() override
         {
+            // ADARSH FIXED - a retry used to come when req was aliased/blocked
+            // and packet did not issue (as the slave port was blocked),
+            // the packet is deleted in synchro_trace.cc:893
+            // but the slave port does not remembers for calls back for a retry
+            // because no_retry_on_stall set in config for this ruby port
             panic("%s does not expect a retry\n", name());
         }
     };
@@ -550,6 +555,9 @@ class SynchroTraceReplayer : public MemObject
 
     /** Holds which threads are waiting for a barrier */
     std::map<Addr, std::set<ThreadID>> threadBarrierMap;
+
+    /** ADARSH Holds mem req oustanding per core */
+    std::vector<Addr> issuedMemReq;
 
   protected:
 

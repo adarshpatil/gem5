@@ -147,6 +147,17 @@ assert(options.num_cpus == len(system.ruby._cpu_ports))
 for ruby_port in system.ruby._cpu_ports:
     system.cpu.cpu_port = ruby_port.slave
 
+    # ADARSH Do not automatically retry stalled Ruby requests
+    # taken from ruby_random_test.py
+    ruby_port.no_retry_on_stall = True
+
+    # This was also there in ruby_random_test.py
+    # at present not sure what this does, hence its commented
+    # this flag is used in Sequencer.cc: 498
+    #ruby_port.using_ruby_tester = True
+
+
+
 for mem_ctrl in system.mem_ctrls:
     mem_ctrl.clk_domain = memsys_clk_domain
 

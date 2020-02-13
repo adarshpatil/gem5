@@ -90,6 +90,7 @@ SynchroTraceReplayer::SynchroTraceReplayer(const Params *p)
     perThreadBarrierBlocked(p->num_threads, false),
     perThreadLocksHeld(p->num_threads),
     condSignals(p->num_threads),
+    issuedMemReq(p->num_cpus,0),
     // gem5 events to wakeup at specific cycles
     wakeupFreqForMonitor(p->monitor_wakeup_freq),
     wakeupFreqForDebugLog(50000*p->monitor_wakeup_freq),
@@ -234,7 +235,7 @@ SynchroTraceReplayer::wakeupMonitor()
 
     // Prints thread status every hour
     if (DTRACE(STIntervalPrintByHour) &&
-        std::difftime(std::time(NULL), hourCounter) >= 60)
+        std::difftime(std::time(NULL), hourCounter) >= 1800)
     {
         hourCounter = std::time(NULL);
         DPRINTFN("%s", std::ctime(&hourCounter));
@@ -363,6 +364,8 @@ SynchroTraceReplayer::replayMemory(ThreadContext& tcxt, CoreID coreId)
 
     // Send the load/store
     const StEvent& ev = tcxt.evStream.peek();
+    DPRINTF(STDebug, "Trying to send for threadId %d coreId %d addr %d\n",
+            tcxt.threadId, coreId, ev.memoryReq.addr);
     num_mem++;
     msgReqSend(coreId,
                ev.memoryReq.addr,
@@ -555,10 +558,14 @@ SynchroTraceReplayer::replayThreadAPI(ThreadContext& tcxt, CoreID coreId)
         schedule(coreEvents[coreId],
                  curTick() + clockPeriod() * Cycles(pthCycles));
         if (!coreEvents[workerCoreId].scheduled())
+        {
+            DPRINTF(STDebug,"scheduling on workerCoreId %d\n", workerCoreId);
             // wake up core (only core 0 is initially working)
             schedule(coreEvents[workerCoreId], curTick() + clockPeriod());
+        }
 
-        DPRINTF(STDebug, "Thread %d created", workerThreadId);
+        DPRINTF(STDebug, "Thread %d created on core %d workerCoreId %d\n",
+                workerThreadId,coreId,workerCoreId);
         tcxt.evStream.pop();
     }
         break;
@@ -865,10 +872,12 @@ void SynchroTraceReplayer::msgReqSend(CoreID coreId,
     // timing.
     pkt->allocate();
 
-    DPRINTF(STDebug, "Requesting access to Addr 0x%x\n", pkt->getAddr());
+    DPRINTF(STDebug, "Requesting access to Addr 0x%x core %d\n",
+            pkt->getAddr(), coreId);
 
     // Send memory request
     if (ports[coreId].sendTimingReq(pkt)) {
+        issuedMemReq[coreId] = addr;
         DPRINTF(STDebug,
                 "Tick<%d>: Message Triggered:"
                 " Core<%d>:Thread<%d>:Event<%d>:Addr<0x%x>\n",
@@ -880,10 +889,11 @@ void SynchroTraceReplayer::msgReqSend(CoreID coreId,
     } else {
         // The packet may not have been issued because another component
         // along the way became overwhelmed and had to drop the packet.
-        warn("%d: Packet did not issue from CoreID: %d, ThreadID: %d",
+        warn("%d: Packet did not issue from CoreID: %d, ThreadID: %d addr: %x",
              curTick(),
              coreId,
-             coreToThreadMap[coreId].front().get().threadId);
+             coreToThreadMap[coreId].front().get().threadId,
+             addr);
 
         // If the packet did not issue, delete it and create a new one upon
         // reissue. Cannot reuse it because it's created with the current
@@ -905,9 +915,16 @@ SynchroTraceReplayer::msgRespRecv(CoreID coreId, PacketPtr pkt)
 
     assert(coreId < numContexts);
 
+    DPRINTF(STDebug, "response for addr %x core %d\n", pkt->getAddr(), coreId);
+
     // TODO(someday)
     // assert this is the expected timing response for the last request
     // this core/thread sent
+    // ADARSH
+    DPRINTF(STDebug, "was expecting response for addr %x core %d\n",
+            issuedMemReq[coreId], coreId);
+    // reset issuedMemReq
+    issuedMemReq[coreId] = 0;
 
     // Schedule core to handle next event, now
     schedule(coreEvents[coreId], curTick());
@@ -916,6 +933,7 @@ SynchroTraceReplayer::msgRespRecv(CoreID coreId, PacketPtr pkt)
 bool
 SynchroTraceReplayer::tryCxtSwapAndSchedule(CoreID coreId)
 {
+    DPRINTF(STDebug,"tryCxtSwapAndSchedule core %d\n", coreId);
     auto& threadsOnCore = coreToThreadMap[coreId];
     assert(threadsOnCore.size() > 0);
 

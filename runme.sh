@@ -7,7 +7,7 @@ AFS_PROJ=/afs/inf.ed.ac.uk/group/project/dramrep
 # only for parsec and splash we have this array
 # lulesh, graph500, comd, xsbench have inline threads
 declare -A parsec_bench_threads=( 
-["blackscholes"]="17" ["bodytrack"]="18" ["canneal"]="17" 
+["blackscholes"]="17" ["bodytrack"]="17" ["canneal"]="17"
 ["dedup"]="51" ["facesim"]="16" ["ferret"]="67" 
 ["fluidanimate"]="17" ["freqmine"]="16"  ["streamcluster"]="17" 
 ["vips"]="19" ["x264"]="18" )
@@ -23,12 +23,12 @@ bench=$1
 if [ $bench == "lulesh" ]
 then
 # lulesh
-$AFS_HOME/gem5/build/X86_MESI_Two_Level/gem5.opt -r -e --outdir=$AFS_PROJ/results/meshdir-simple/lulesh --debug-flags=ROI,STIntervalPrintByHour configs/example/synchrotrace_ruby.py \
+$AFS_HOME/gem5/build/X86_MESI_Two_Level/gem5.opt -r -e --outdir=$AFS_PROJ/results/numa/lulesh --debug-flags=ROI,STIntervalPrintByHour configs/example/synchrotrace_ruby.py \
 --event-dir=$AFS_PROJ/traces/16t-lulesh \
---output-dir=$AFS_PROJ/results/meshdir-simple/lulesh \
+--output-dir=$AFS_PROJ/results/numa/lulesh \
 --ruby \
 --network=simple \
---topology=MeshDirCorners_XY \
+--topology=Multicore_2chip_NUMA \
 --mesh-rows=4 \
 --cacheline_size=64 \
 --l1d_size=32kB --l1d_assoc=8 \
@@ -46,12 +46,12 @@ $AFS_HOME/gem5/build/X86_MESI_Two_Level/gem5.opt -r -e --outdir=$AFS_PROJ/result
 elif [ $bench == "comd" ]
 then
 # comd
-$AFS_HOME/gem5/build/X86_MESI_Two_Level/gem5.opt -r -e --outdir=$AFS_PROJ/results/meshdir-simple/comd --debug-flags=ROI,STIntervalPrintByHour configs/example/synchrotrace_ruby.py \
+$AFS_HOME/gem5/build/X86_MESI_Two_Level/gem5.opt -r -e --outdir=$AFS_PROJ/results/numa/comd --debug-flags=ROI,STIntervalPrintByHour configs/example/synchrotrace_ruby.py \
 --event-dir=$AFS_PROJ/traces/16t-comd \
---output-dir=$AFS_PROJ/results/meshdir-simple/comd \
+--output-dir=$AFS_PROJ/results/numa/comd \
 --ruby \
 --network=simple \
---topology=MeshDirCorners_XY \
+--topology=Multicore_2chip_NUMA \
 --mesh-rows=4 \
 --cacheline_size=64 \
 --l1d_size=32kB --l1d_assoc=8 \
@@ -68,13 +68,13 @@ $AFS_HOME/gem5/build/X86_MESI_Two_Level/gem5.opt -r -e --outdir=$AFS_PROJ/result
 
 elif [ $bench == "graph500" ]
 then
-# graph500 - for now using 16t-graph-s14, revert back to 16t-graph
-$AFS_HOME/gem5/build/X86_MESI_Two_Level/gem5.opt -r -e --outdir=$AFS_PROJ/results/meshdir-simple/graph500 --debug-flags=ROI,STIntervalPrintByHour configs/example/synchrotrace_ruby.py \
---event-dir=$AFS_PROJ/traces/16t-graph500-s14 \
---output-dir=$AFS_PROJ/results/meshdir-simple/graph500 \
+# graph500
+$AFS_HOME/gem5/build/X86_MESI_Two_Level/gem5.opt -r -e --outdir=$AFS_PROJ/results/numa/graph500 --debug-flags=ROI,STIntervalPrintByHour configs/example/synchrotrace_ruby.py \
+--event-dir=$AFS_PROJ/traces/16t-graph500 \
+--output-dir=$AFS_PROJ/results/numa/graph500 \
 --ruby \
 --network=simple \
---topology=MeshDirCorners_XY \
+--topology=Multicore_2chip_NUMA \
 --mesh-rows=4 \
 --cacheline_size=64 \
 --l1d_size=32kB --l1d_assoc=8 \
@@ -85,19 +85,19 @@ $AFS_HOME/gem5/build/X86_MESI_Two_Level/gem5.opt -r -e --outdir=$AFS_PROJ/result
 --num-cpus=16 --num-threads=16 \
 --cpi-iops=1 --cpi-flops=1 --pc-skip \
 --warmup-ops=1000000000 --detailed-ops=20000000000 \
---monitor-freq=100\
+--monitor-freq=100 \
 --numa-high-bit=12 \
 --mem-type=DDR4_2400_4x16 & disown
 
 elif [ $bench == "xsbench" ]
 then
 # xsbench
-$AFS_HOME/gem5/build/X86_MESI_Two_Level/gem5.opt -r -e --outdir=$AFS_PROJ/results/meshdir-simple/xsbench --debug-flags=ROI,STIntervalPrintByHour configs/example/synchrotrace_ruby.py \
+$AFS_HOME/gem5/build/X86_MESI_Two_Level/gem5.opt -r -e --outdir=$AFS_PROJ/results/numa/xsbench --debug-flags=ROI,STIntervalPrintByHour configs/example/synchrotrace_ruby.py \
 --event-dir=$AFS_PROJ/traces/16t-small-xsbench \
---output-dir=$AFS_PROJ/results/meshdir-simple/xsbench \
+--output-dir=$AFS_PROJ/results/numa/xsbench \
 --ruby \
 --network=simple \
---topology=MeshDirCorners_XY \
+--topology=Multicore_2chip_NUMA \
 --mesh-rows=4 \
 --cacheline_size=64 \
 --l1d_size=32kB --l1d_assoc=8 \
@@ -108,19 +108,19 @@ $AFS_HOME/gem5/build/X86_MESI_Two_Level/gem5.opt -r -e --outdir=$AFS_PROJ/result
 --num-cpus=16 --num-threads=16 \
 --cpi-iops=1 --cpi-flops=1 --pc-skip \
 --warmup-ops=1000000000 --detailed-ops=20000000000 \
---monitor-freq=100\
+--monitor-freq=100 \
 --numa-high-bit=12 \
 --mem-type=DDR4_2400_4x16 & disown
 
 elif [[ ${parsec_bench_threads[$bench]} ]]
 then
 # must be one of the parsec benchmarks
-$AFS_HOME/gem5/build/X86_MESI_Two_Level/gem5.opt -r -e --outdir=$AFS_PROJ/results/meshdir-simple/$bench --debug-flags=ROI,STIntervalPrintByHour configs/example/synchrotrace_ruby.py \
+$AFS_HOME/gem5/build/X86_MESI_Two_Level/gem5.opt -r -e --outdir=$AFS_PROJ/results/numa/$bench --debug-flags=ROI,STIntervalPrintByHour configs/example/synchrotrace_ruby.py \
 --event-dir=$AFS_PROJ/traces/16t-large-roi-parsec/$bench \
---output-dir=$AFS_PROJ/results/meshdir-simple/$bench \
+--output-dir=$AFS_PROJ/results/numa/$bench \
 --ruby \
 --network=simple \
---topology=MeshDirCorners_XY \
+--topology=Multicore_2chip_NUMA \
 --mesh-rows=4 \
 --cacheline_size=64 \
 --l1d_size=32kB --l1d_assoc=8 \
@@ -143,12 +143,12 @@ then
 #       #--event-dir=/disk/scratch/s1897969/traces/16t-large-roi-splash/$bench \
 # afs has cholesky, watern2, fft, barnes
 #	#--event-dir=$AFS_PROJ/traces/16t-large-roi-splash/$bench \
-$AFS_HOME/gem5/build/X86_MESI_Two_Level/gem5.opt -r -e --outdir=$AFS_PROJ/results/meshdir-simple/$bench --debug-flags=ROI,STIntervalPrintByHour configs/example/synchrotrace_ruby.py \
+$AFS_HOME/gem5/build/X86_MESI_Two_Level/gem5.opt -r -e --outdir=$AFS_PROJ/results/numa/$bench --debug-flags=ROI,STIntervalPrintByHour configs/example/synchrotrace_ruby.py \
 --event-dir=$AFS_PROJ/traces/16t-large-roi-splash/$bench \
---output-dir=$AFS_PROJ/results/meshdir-simple/$bench \
+--output-dir=$AFS_PROJ/results/numa/$bench \
 --ruby \
 --network=simple \
---topology=MeshDirCorners_XY \
+--topology=Multicore_2chip_NUMA \
 --mesh-rows=4 \
 --cacheline_size=64 \
 --l1d_size=32kB --l1d_assoc=8 \
