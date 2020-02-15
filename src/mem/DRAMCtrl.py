@@ -715,6 +715,12 @@ class DDR4_2400_4x16(DDR4_2400_16x4):
     IDD5 = '280mA'
     IDD3P1 = '41mA'
 
+# ADARSH we create at new DDR4_2400_4x16 for mirroring
+# which has 8 devices/rank to increase capacity
+# 4 devices/rank * 2 ranks/channel * 1GB/device = 8GB/channel
+class DDR4_2400_4x16_Mirroring(DDR4_2400_4x16):
+    ranks_per_channel = 2
+
 # A single LPDDR2-S4 x32 interface (one command/address bus), with
 # default timings based on a LPDDR2-1066 4 Gbit part (Micron MT42L128M32D1)
 # in a 1x32 configuration.

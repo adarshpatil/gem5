@@ -200,13 +200,20 @@ Network::addressToNodeID(Addr addr, MachineType mtype)
 {
     // Look through the address maps for entries with matching machine
     // type to get the responsible node for this address.
+    // ADARSH - addrMap is the global address map populated for all dir ctrl
+    // here we skip matching add range for nodes 2/3 and only return 0/1 
+    // we dont know why addr range for 2/3 are being populated in addrmap
+    // even though in_addr_map are set to ctrl.conf_table_reported false
     const auto &matching_ranges = addrMap.equal_range(mtype);
     for (auto it = matching_ranges.first; it != matching_ranges.second; it++) {
         AddrMapNode &node = it->second;
         auto &ranges = node.ranges;
         for (AddrRange &range: ranges) {
             if (range.contains(addr)) {
-                return node.id;
+                if(node.id >= 2)
+                    break;
+                else
+                    return node.id;
             }
         }
     }

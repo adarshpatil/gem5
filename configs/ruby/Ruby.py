@@ -95,7 +95,7 @@ def setup_memory_controllers(system, ruby, dir_cntrls, options):
     crossbars = []
 
     if options.numa_high_bit:
-        dir_bits = int(math.log(options.num_dirs, 2))
+        dir_bits = int(math.log(options.num_dirs/2, 2))
         intlv_size = 2 ** (options.numa_high_bit - dir_bits + 1)
     else:
         # if the numa_bit is not specified, set the directory bits as the
@@ -106,6 +106,8 @@ def setup_memory_controllers(system, ruby, dir_cntrls, options):
     # attached to a directory controller.  A separate controller is created
     # for each address range as the abstract memory can handle only one
     # contiguous address range as of now.
+    # ADARSH we interleave across 2 directories only
+    # the other 2 are mirrored and interleaved in the same way
     for dir_cntrl in dir_cntrls:
         crossbar = None
         if len(system.mem_ranges) > 1:
@@ -116,8 +118,8 @@ def setup_memory_controllers(system, ruby, dir_cntrls, options):
         dir_ranges = []
         for r in system.mem_ranges:
             mem_ctrl = MemConfig.create_mem_ctrl(
-                MemConfig.get(options.mem_type), r, index, options.num_dirs,
-                int(math.log(options.num_dirs, 2)), intlv_size)
+                MemConfig.get(options.mem_type), r, index, options.num_dirs/2,
+                int(math.log(options.num_dirs/2, 2)), intlv_size)
 
             if options.access_backing_store:
                 mem_ctrl.kvm_map=False
@@ -136,6 +138,8 @@ def setup_memory_controllers(system, ruby, dir_cntrls, options):
                         options.enable_dram_powerdown
 
         index += 1
+        # ADARSH: Here the address range for the directory is set after creating
+        # the corresponding mem_ctrl
         dir_cntrl.addr_ranges = dir_ranges
 
     system.mem_ctrls = mem_ctrls

@@ -135,7 +135,25 @@ def create_mem_ctrl(cls, r, i, nbr_mem_ctrls, intlv_bits, intlv_size):
 
     # We got all we need to configure the appropriate address
     # range
-    ctrl.range = m5.objects.AddrRange(r.start, size = r.size(),
+    # ADARSH set mem cntrl 0 and 1 to be reported for mem range
+    # NOTE this will work only for 4 directory controllers
+    # with interleaving across 2 directories and mirroring of 2
+    # Ctrl 2 and 3 are full address range - they are not reported
+    # we can also interleave them but we chose not to
+    # routing logic network.cc takes care of routing to correct ctrl
+
+    if i >= 2:
+        ctrl.in_addr_map = False
+        ctrl.conf_table_reported = False
+        ctrl.range = m5.objects.AddrRange(r.start, size = r.size())#,
+                                    #   intlvHighBit (23) = \
+                                    #       intlv_low_bit(12) + intlv_bits(12) - 1,
+                                    #   xorHighBit (31)= \
+                                    #       xor_low_bit(20) + intlv_bits(12) - 1,
+                                    #   intlvBits = intlv_bits(12),
+                                    #   intlvMatch = i)
+    else:
+        ctrl.range = m5.objects.AddrRange(r.start, size = r.size(),
                                       intlvHighBit = \
                                           intlv_low_bit + intlv_bits - 1,
                                       xorHighBit = \
@@ -153,6 +171,8 @@ def config_mem(options, system):
     the specific class. The individual controllers have their
     parameters set such that the address range is interleaved between
     them.
+    ADARSH: for synchrotrace_ruby the config_mem logic is directly
+    done by Ruby.py and MemConfig.create_mem_cntrl() is called directly
     """
 
     # Mandatory options

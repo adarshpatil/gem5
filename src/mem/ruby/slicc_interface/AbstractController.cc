@@ -363,10 +363,20 @@ AbstractController::recvAtomic(PacketPtr pkt)
 }
 
 MachineID
-AbstractController::mapAddressToMachine(Addr addr, MachineType mtype) const
+AbstractController::mapAddressToMachine(Addr addr, MachineType mtype,
+                                        NodeID id) const
 {
     NodeID node = m_net_ptr->addressToNodeID(addr, mtype);
+    // ADARSH assuming 4 directory controllers
+    // addressToNodeID always returns ctrl0 and ctrl1
+    // depending on the which NUMA node the node id is in
+    // we either return the addressToNodeID mapping or we add 2
+    // i.e. if nodeID is in the other numa node, add 2 and reply
+    if (id >=8)
+        node += 2;
+    DPRINTF(RubyQueue,"ADARSH version %d, node %d\n", id, node);
     MachineID mach = {mtype, node};
+
     return mach;
 }
 
