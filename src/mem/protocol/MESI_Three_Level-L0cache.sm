@@ -48,38 +48,38 @@ machine(MachineType:L0Cache, "MESI Directory L0 Cache")
     // Base states
 
     // The cache entry has not been allocated.
-    I, AccessPermission:Invalid;
+    I, AccessPermission:Invalid, desc="";
 
     // The cache entry is in shared mode. The processor can read this entry
     // but it cannot write to it.
-    S, AccessPermission:Read_Only;
+    S, AccessPermission:Read_Only, desc="";
 
     // The cache entry is in exclusive mode. The processor can read this
     // entry. It can write to this entry without informing the directory.
     // On writing, the entry moves to M state.
-    E, AccessPermission:Read_Only;
+    E, AccessPermission:Read_Only, desc="";
 
     // The processor has read and write permissions on this entry.
-    M, AccessPermission:Read_Write;
+    M, AccessPermission:Read_Write, desc="";
 
     // Transient States
 
     // The cache controller has requested an instruction.  It will be stored
     // in the shared state so that the processor can read it.
-    Inst_IS, AccessPermission:Busy;
+    Inst_IS, AccessPermission:Busy, desc="";
 
     // The cache controller has requested that this entry be fetched in
     // shared state so that the processor can read it.
-    IS, AccessPermission:Busy;
+    IS, AccessPermission:Busy, desc="";
 
     // The cache controller has requested that this entry be fetched in
     // modify state so that the processor can read/write it.
-    IM, AccessPermission:Busy;
+    IM, AccessPermission:Busy, desc="";
 
     // The cache controller had read permission over the entry. But now the
     // processor needs to write to it. So, the controller has requested for
     // write permission.
-    SM, AccessPermission:Read_Only;
+    SM, AccessPermission:Read_Only, desc="";
   }
 
   // EVENTS

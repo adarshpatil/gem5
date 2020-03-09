@@ -40,8 +40,8 @@ enumeration(CoherenceClass, desc="...") {
 
   // Request types for sending data and acks from L0 to L1 cache
   // when an invalidation message is received.
-  INV_DATA;
-  INV_ACK;
+  INV_DATA, desc="";
+  INV_ACK, desc="";
 
   DATA, desc="Data block for L1 cache in S state";
   DATA_EXCLUSIVE, desc="Data block for L1 cache in M/E state";

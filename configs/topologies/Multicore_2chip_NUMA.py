@@ -32,13 +32,15 @@ class Multicore_2chip_NUMA(SimpleTopology):
 
 
         # First determine which nodes are cache cntrls vs. dirs vs. dma
-        cache_nodes = []
+        l1cache_nodes = [] # holds per core private L1 caches
+        l2cache_nodes = [] # holds per socket private L2 caches
         dir_nodes = []
         dma_nodes = []
         for node in nodes:
-            if node.type == 'L1Cache_Controller' or \
-            node.type == 'L2Cache_Controller':
-                cache_nodes.append(node)
+            if node.type == 'L1Cache_Controller':
+                l1cache_nodes.append(node)
+            elif node.type == 'L2Cache_Controller':
+                l2cache_nodes.append(node)
             elif node.type == 'Directory_Controller':
                 dir_nodes.append(node)
             elif node.type == 'DMA_Controller':
@@ -51,9 +53,10 @@ class Multicore_2chip_NUMA(SimpleTopology):
         assert(num_rows > 0 and num_rows <= num_routers)
         num_columns = int(num_routers / num_rows)
         assert(num_columns * num_rows == num_routers)
-        caches_per_router, remainder = divmod(len(cache_nodes), num_routers)
+        l1caches_per_router, remainder = divmod(len(l1cache_nodes), num_routers)
         assert(remainder == 0)
-        assert(len(dir_nodes) == 4)
+        assert(len(l2cache_nodes) == 2)
+        assert(len(dir_nodes) == 2)
 
         # Create the routers in the mesh
         routers = [Router(router_id=i) \
@@ -65,29 +68,31 @@ class Multicore_2chip_NUMA(SimpleTopology):
 
         # Connect each cache controller to the appropriate router
         ext_links = []
-        for (i, n) in enumerate(cache_nodes):
+        for (i, n) in enumerate(l1cache_nodes):
             cntrl_level, router_id = divmod(i, num_routers)
-            assert(cntrl_level < caches_per_router)
+            assert(cntrl_level < l1caches_per_router)
             ext_links.append(ExtLink(link_id=link_count, ext_node=n,
                                     int_node=routers[router_id],
                                     latency = link_latency))
             link_count += 1
 
-        # Connect the dir nodes to the corners.
+        # Connect the l2 nodes to the corners - router[0] and router[num_routers-num_cols]
+        ext_links.append(ExtLink(link_id=link_count, ext_node=l2cache_nodes[0],
+                                int_node=routers[0],
+                                latency = link_latency))
+        link_count += 1
+        ext_links.append(ExtLink(link_id=link_count, ext_node=l2cache_nodes[1],
+                                int_node=routers[num_routers - num_columns],
+                                latency = link_latency))
+        link_count += 1
+
+        # Connect the dir nodes to the corners - router[0] and router[num_routers-num_cols]
         ext_links.append(ExtLink(link_id=link_count, ext_node=dir_nodes[0],
                                 int_node=routers[0],
                                 latency = link_latency))
         link_count += 1
         ext_links.append(ExtLink(link_id=link_count, ext_node=dir_nodes[1],
-                                int_node=routers[num_columns - 1],
-                                latency = link_latency))
-        link_count += 1
-        ext_links.append(ExtLink(link_id=link_count, ext_node=dir_nodes[2],
                                 int_node=routers[num_routers - num_columns],
-                                latency = link_latency))
-        link_count += 1
-        ext_links.append(ExtLink(link_id=link_count, ext_node=dir_nodes[3],
-                                int_node=routers[num_routers - 1],
                                 latency = link_latency))
         link_count += 1
 

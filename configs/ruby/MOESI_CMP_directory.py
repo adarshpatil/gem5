@@ -45,6 +45,7 @@ from m5.objects import *
 from m5.defines import buildEnv
 from Ruby import create_topology, create_directories
 from Ruby import send_evicts
+from common import FileSystemConfig
 
 #
 # Declare caches used by the protocol
@@ -58,6 +59,9 @@ class L2Cache(RubyCache):
     tagAccessLatency = 20
 
 def define_options(parser):
+    parser.add_option("--num-clusters", type = "int", default = 1,
+            help = "number of clusters in a design in which there are shared\
+            caches private to clusters")
     return
 
 def create_system(options, full_system, system, dma_ports, bootmem,
@@ -77,116 +81,135 @@ def create_system(options, full_system, system, dma_ports, bootmem,
     l2_cntrl_nodes = []
     dma_cntrl_nodes = []
 
+    assert (options.num_cpus % options.num_clusters == 0)
+    num_cpus_per_cluster = options.num_cpus / options.num_clusters
+
+    assert (options.num_l2caches % options.num_clusters == 0)
+    num_l2caches_per_cluster = options.num_l2caches / options.num_clusters
+
+    l2_bits = int(math.log(num_l2caches_per_cluster, 2))
+    block_size_bits = int(math.log(options.cacheline_size, 2))
+    l2_index_start = block_size_bits + l2_bits
+
+    print "num clusters:" + str(options.num_clusters)
+    print "num cpu per clusters:" + str(num_cpus_per_cluster)
+    print "num l2 caches per cluster:" + str(num_l2caches_per_cluster)
+    
     #
     # Must create the individual controllers before the network to ensure the
     # controller constructors are called before the network constructor
     #
-    block_size_bits = int(math.log(options.cacheline_size, 2))
+    for i in range(options.num_clusters):
+        for j in range(num_cpus_per_cluster):
+            #
+            # First create the Ruby objects associated with this cpu
+            #
+            l1i_cache = L1Cache(size = options.l1i_size,
+                                assoc = options.l1i_assoc,
+                                start_index_bit = block_size_bits,
+                                is_icache = True)
+            l1d_cache = L1Cache(size = options.l1d_size,
+                                assoc = options.l1d_assoc,
+                                start_index_bit = block_size_bits,
+                                is_icache = False)
 
-    for i in range(options.num_cpus):
-        #
-        # First create the Ruby objects associated with this cpu
-        #
-        l1i_cache = L1Cache(size = options.l1i_size,
-                            assoc = options.l1i_assoc,
-                            start_index_bit = block_size_bits,
-                            is_icache = True)
-        l1d_cache = L1Cache(size = options.l1d_size,
-                            assoc = options.l1d_assoc,
-                            start_index_bit = block_size_bits,
-                            is_icache = False)
+            # the ruby random tester reuses num_cpus to specify the
+            # number of cpu ports connected to the tester object, which
+            # is stored in system.cpu. because there is only ever one
+            # tester object, num_cpus is not necessarily equal to the
+            # size of system.cpu; therefore if len(system.cpu) == 1
+            # we use system.cpu[0] to set the clk_domain, thereby ensuring
+            # we don't index off the end of the cpu list.
+            if len(system.cpu) == 1:
+                clk_domain = system.cpu[0].clk_domain
+            else:
+                clk_domain = system.cpu[i].clk_domain
 
-        # the ruby random tester reuses num_cpus to specify the
-        # number of cpu ports connected to the tester object, which
-        # is stored in system.cpu. because there is only ever one
-        # tester object, num_cpus is not necessarily equal to the
-        # size of system.cpu; therefore if len(system.cpu) == 1
-        # we use system.cpu[0] to set the clk_domain, thereby ensuring
-        # we don't index off the end of the cpu list.
-        if len(system.cpu) == 1:
-            clk_domain = system.cpu[0].clk_domain
-        else:
-            clk_domain = system.cpu[i].clk_domain
+            l1_cntrl = L1Cache_Controller(version=(i * num_cpus_per_cluster + j),
+                                        L1Icache=l1i_cache,
+                                        L1Dcache=l1d_cache,
+                                        send_evictions=send_evicts(options),
+                                        transitions_per_cycle=options.ports,
+                                        clk_domain=clk_domain,
+                                        #l2_select_num_bits = l2_bits,
+                                        cluster_id = i,
+                                        ruby_system=ruby_system)
 
-        l1_cntrl = L1Cache_Controller(version=i, L1Icache=l1i_cache,
-                                      L1Dcache=l1d_cache,
-                                      send_evictions=send_evicts(options),
-                                      transitions_per_cycle=options.ports,
-                                      clk_domain=clk_domain,
-                                      ruby_system=ruby_system)
+            cpu_seq = RubySequencer(version=(i * num_cpus_per_cluster + j), 
+                                    icache=l1i_cache,
+                                    dcache=l1d_cache, clk_domain=clk_domain,
+                                    ruby_system=ruby_system)
 
-        cpu_seq = RubySequencer(version=i, icache=l1i_cache,
-                                dcache=l1d_cache, clk_domain=clk_domain,
-                                ruby_system=ruby_system)
+            l1_cntrl.sequencer = cpu_seq
+            exec("ruby_system.l1_cntrl%d = l1_cntrl" % (i * num_cpus_per_cluster + j))
 
-        l1_cntrl.sequencer = cpu_seq
-        exec("ruby_system.l1_cntrl%d = l1_cntrl" % i)
+            # Add controllers and sequencers to the appropriate lists
+            cpu_sequencers.append(cpu_seq)
+            l1_cntrl_nodes.append(l1_cntrl)
 
-        # Add controllers and sequencers to the appropriate lists
-        cpu_sequencers.append(cpu_seq)
-        l1_cntrl_nodes.append(l1_cntrl)
-
-        # Connect the L1 controllers and the network
-        l1_cntrl.mandatoryQueue = MessageBuffer()
-        l1_cntrl.requestFromL1Cache = MessageBuffer()
-        l1_cntrl.requestFromL1Cache.master = ruby_system.network.slave
-        l1_cntrl.responseFromL1Cache = MessageBuffer()
-        l1_cntrl.responseFromL1Cache.master = ruby_system.network.slave
-        l1_cntrl.requestToL1Cache = MessageBuffer()
-        l1_cntrl.requestToL1Cache.slave = ruby_system.network.master
-        l1_cntrl.responseToL1Cache = MessageBuffer()
-        l1_cntrl.responseToL1Cache.slave = ruby_system.network.master
-        l1_cntrl.triggerQueue = MessageBuffer(ordered = True)
+            # Connect the L1 controllers and the network
+            l1_cntrl.mandatoryQueue = MessageBuffer()
+            l1_cntrl.requestFromL1Cache = MessageBuffer()
+            l1_cntrl.requestFromL1Cache.master = ruby_system.network.slave
+            l1_cntrl.responseFromL1Cache = MessageBuffer()
+            l1_cntrl.responseFromL1Cache.master = ruby_system.network.slave
+            l1_cntrl.requestToL1Cache = MessageBuffer()
+            l1_cntrl.requestToL1Cache.slave = ruby_system.network.master
+            l1_cntrl.responseToL1Cache = MessageBuffer()
+            l1_cntrl.responseToL1Cache.slave = ruby_system.network.master
+            l1_cntrl.triggerQueue = MessageBuffer(ordered = True)
 
 
-    # Create the L2s interleaved addr ranges
-    l2_addr_ranges = []
-    l2_bits = int(math.log(options.num_l2caches, 2))
-    numa_bit = block_size_bits + l2_bits - 1
-    sysranges = [] + system.mem_ranges
-    if bootmem: sysranges.append(bootmem.range)
-    for i in range(options.num_l2caches):
-        ranges = []
-        for r in sysranges:
-            addr_range = AddrRange(r.start, size = r.size(),
-                                    intlvHighBit = numa_bit,
-                                    intlvBits = l2_bits,
-                                    intlvMatch = i)
-            ranges.append(addr_range)
-        l2_addr_ranges.append(ranges)
+        # Create the L2s interleaved addr ranges
+        # ADARSH at some point if we wanna have interleaved L2 caches within 
+        # a cluster - add this logic back right now single L2 with full addr range
+        # l2_addr_ranges = []
+        # l2_bits = int(math.log(options.num_l2caches, 2))
+        # numa_bit = block_size_bits + l2_bits - 1
+        # sysranges = [] + system.mem_ranges
+        # if bootmem: sysranges.append(bootmem.range)
+        # for i in range(options.num_l2caches):
+        #     ranges = []
+        #     for r in sysranges:
+        #         addr_range = AddrRange(r.start, size = r.size(),
+        #                                 intlvHighBit = numa_bit,
+        #                                 intlvBits = l2_bits,
+        #                                 intlvMatch = i)
+        #         ranges.append(addr_range)
+        #     l2_addr_ranges.append(ranges)
 
-    for i in range(options.num_l2caches):
-        #
-        # First create the Ruby objects associated with this cpu
-        #
-        l2_cache = L2Cache(size = options.l2_size,
-                           assoc = options.l2_assoc,
-                           start_index_bit = block_size_bits + l2_bits)
+        for j in range(num_l2caches_per_cluster):
+            #
+            # First create the Ruby objects associated with this cpu
+            #
+            l2_cache = L2Cache(size = options.l2_size,
+                            assoc = options.l2_assoc,
+                            start_index_bit = l2_index_start)
 
-        l2_cntrl = L2Cache_Controller(version = i,
-                                      L2cache = l2_cache,
-                                      transitions_per_cycle = options.ports,
-                                      ruby_system = ruby_system,
-                                      addr_ranges = l2_addr_ranges[i])
+            l2_cntrl = L2Cache_Controller(version = (i * num_l2caches_per_cluster + j),
+                                        L2cache = l2_cache, cluster_id = i,
+                                        transitions_per_cycle = options.ports,
+                                        ruby_system = ruby_system)
+                                        #addr_ranges = l2_addr_ranges[i])
 
-        exec("ruby_system.l2_cntrl%d = l2_cntrl" % i)
-        l2_cntrl_nodes.append(l2_cntrl)
+            exec("ruby_system.l2_cntrl%d = l2_cntrl" % (i * num_l2caches_per_cluster + j))
+            l2_cntrl_nodes.append(l2_cntrl)
 
-        # Connect the L2 controllers and the network
-        l2_cntrl.GlobalRequestFromL2Cache = MessageBuffer()
-        l2_cntrl.GlobalRequestFromL2Cache.master = ruby_system.network.slave
-        l2_cntrl.L1RequestFromL2Cache = MessageBuffer()
-        l2_cntrl.L1RequestFromL2Cache.master = ruby_system.network.slave
-        l2_cntrl.responseFromL2Cache = MessageBuffer()
-        l2_cntrl.responseFromL2Cache.master = ruby_system.network.slave
+            # Connect the L2 controllers and the network
+            l2_cntrl.GlobalRequestFromL2Cache = MessageBuffer()
+            l2_cntrl.GlobalRequestFromL2Cache.master = ruby_system.network.slave
+            l2_cntrl.L1RequestFromL2Cache = MessageBuffer()
+            l2_cntrl.L1RequestFromL2Cache.master = ruby_system.network.slave
+            l2_cntrl.responseFromL2Cache = MessageBuffer()
+            l2_cntrl.responseFromL2Cache.master = ruby_system.network.slave
 
-        l2_cntrl.GlobalRequestToL2Cache = MessageBuffer()
-        l2_cntrl.GlobalRequestToL2Cache.slave = ruby_system.network.master
-        l2_cntrl.L1RequestToL2Cache = MessageBuffer()
-        l2_cntrl.L1RequestToL2Cache.slave = ruby_system.network.master
-        l2_cntrl.responseToL2Cache = MessageBuffer()
-        l2_cntrl.responseToL2Cache.slave = ruby_system.network.master
-        l2_cntrl.triggerQueue = MessageBuffer(ordered = True)
+            l2_cntrl.GlobalRequestToL2Cache = MessageBuffer()
+            l2_cntrl.GlobalRequestToL2Cache.slave = ruby_system.network.master
+            l2_cntrl.L1RequestToL2Cache = MessageBuffer()
+            l2_cntrl.L1RequestToL2Cache.slave = ruby_system.network.master
+            l2_cntrl.responseToL2Cache = MessageBuffer()
+            l2_cntrl.responseToL2Cache.slave = ruby_system.network.master
+            l2_cntrl.triggerQueue = MessageBuffer(ordered = True)
 
     # Run each of the ruby memory controllers at a ratio of the frequency of
     # the ruby system.
@@ -266,6 +289,35 @@ def create_system(options, full_system, system, dma_ports, bootmem,
         io_controller.triggerQueue = MessageBuffer(ordered = True)
 
         all_cntrls = all_cntrls + [io_controller]
+    else:
+        for i in xrange(options.num_clusters):
+            for j in xrange(num_cpus_per_cluster):
+                FileSystemConfig.register_cpu(physical_package_id = 0,
+                                              core_siblings = xrange(options.num_cpus),
+                                              core_id = i*num_cpus_per_cluster+j,
+                                              thread_siblings = [])
+
+                FileSystemConfig.register_cache(level = 1,
+                                                idu_type = 'Instruction',
+                                                size = options.l1i_size,
+                                                line_size = options.cacheline_size,
+                                                assoc = options.l1i_assoc,
+                                                cpus = [i*num_cpus_per_cluster+j])
+                FileSystemConfig.register_cache(level = 1,
+                                                idu_type = 'Data',
+                                                size = options.l1d_size,
+                                                line_size = options.cacheline_size,
+                                                assoc = options.l1d_assoc,
+                                                cpus = [i*num_cpus_per_cluster+j])
+
+            FileSystemConfig.register_cache(level = 2,
+                                            idu_type = 'Unified',
+                                            size = str(MemorySize(options.l2_size) * \
+                                                   num_l2caches_per_cluster)+'B',
+                                            line_size = options.cacheline_size,
+                                            assoc = options.l2_assoc,
+                                            cpus = [n for n in xrange(i*num_cpus_per_cluster, \
+                                                                     (i+1)*num_cpus_per_cluster)])
 
     ruby_system.network.number_of_virtual_networks = 3
     topology = create_topology(all_cntrls, options)

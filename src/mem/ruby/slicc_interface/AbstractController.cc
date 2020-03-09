@@ -370,6 +370,27 @@ AbstractController::mapAddressToMachine(Addr addr, MachineType mtype) const
     return mach;
 }
 
+MachineID
+AbstractController::mapAddressToMachine(Addr addr, MachineType mtype,
+                                        NodeID clusterID) const
+{
+    // ADARSH we know node l1 0-7 have clusterID 0 and l2 8-15 have clusterID 1
+    // hence we return (L2Cache,clusterID)
+    NodeID node;
+    if(mtype == MachineType_L2Cache)
+    {
+        node = clusterID;
+    }
+    else
+    {
+        // ADARSH we should never reach here; only L1 caches call this function
+        // this function is overloaded to return L2 cache local to its cluster
+        assert(0); 
+    }
+    MachineID mach = {mtype, node};
+    return mach;
+}
+
 bool
 AbstractController::MemoryPort::recvTimingResp(PacketPtr pkt)
 {

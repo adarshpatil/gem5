@@ -78,11 +78,11 @@ machine(MachineType:L1Cache, "MESI Directory L1 Cache CMP")
     // For all of the following states, invalidate
     // message has been sent to L0 cache. The response
     // from the L0 cache has not been seen yet.
-    S_IL0, AccessPermission:Busy;
-    E_IL0, AccessPermission:Busy;
-    M_IL0, AccessPermission:Busy;
-    MM_IL0, AccessPermission:Read_Write;
-    SM_IL0, AccessPermission:Busy;
+    S_IL0, AccessPermission:Busy, desc="";
+    E_IL0, AccessPermission:Busy, desc="";
+    M_IL0, AccessPermission:Busy, desc="";
+    MM_IL0, AccessPermission:Read_Write, desc="";
+    SM_IL0, AccessPermission:Busy, desc="";
   }
 
   // EVENTS
@@ -95,17 +95,17 @@ machine(MachineType:L1Cache, "MESI Directory L1 Cache CMP")
     // Responses from the L0 Cache
     // L0 cache received the invalidation message
     // and has sent the data.
-    L0_DataAck;
+    L0_DataAck, desc="";
 
     Inv,           desc="Invalidate request from L2 bank";
 
     // internal generated request
     // Invalidate the line in L0 due to own requirements
-    L0_Invalidate_Own;
+    L0_Invalidate_Own, desc="";
     // Invalidate the line in L0 due to some other cache's requirements
-    L0_Invalidate_Else;
+    L0_Invalidate_Else, desc="";
     // Invalidate the line in the cache due to some one else / space needs.
-    L1_Replacement;
+    L1_Replacement, desc="";
 
     // other requests
     Fwd_GETX,   desc="GETX from other processor";

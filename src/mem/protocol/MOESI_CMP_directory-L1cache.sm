@@ -151,7 +151,7 @@ machine(MachineType:L1Cache, "L1 cache protocol")
   void unset_cache_entry();
   void set_tbe(TBE b);
   void unset_tbe();
-  MachineID mapAddressToMachine(Addr addr, MachineType mtype);
+  MachineID mapAddressToMachine(Addr addr, MachineType mtype, NodeID clusterID);
 
   TBETable TBEs, template="<L1Cache_TBE>", constructor="m_number_of_TBEs";
   TimerTable useTimerTable;
@@ -465,7 +465,8 @@ machine(MachineType:L1Cache, "L1 cache protocol")
         out_msg.Requestor := machineID;
         out_msg.RequestorMachine := MachineType:L1Cache;
         out_msg.Destination.add(mapAddressToMachine(address,
-                                                    MachineType:L2Cache));
+                                                    MachineType:L2Cache,
+                                                    clusterID));
         out_msg.MessageSize := MessageSizeType:Request_Control;
         out_msg.AccessMode := in_msg.AccessMode;
         out_msg.Prefetch := in_msg.Prefetch;
@@ -481,7 +482,8 @@ machine(MachineType:L1Cache, "L1 cache protocol")
         out_msg.Requestor := machineID;
         out_msg.RequestorMachine := MachineType:L1Cache;
         out_msg.Destination.add(mapAddressToMachine(address,
-                                                    MachineType:L2Cache));
+                                                    MachineType:L2Cache,
+                                                    clusterID));
         out_msg.MessageSize := MessageSizeType:Request_Control;
         out_msg.AccessMode := in_msg.AccessMode;
         out_msg.Prefetch := in_msg.Prefetch;
@@ -496,7 +498,8 @@ machine(MachineType:L1Cache, "L1 cache protocol")
       out_msg.Requestor := machineID;
       out_msg.RequestorMachine := MachineType:L1Cache;
       out_msg.Destination.add(mapAddressToMachine(address,
-                                                  MachineType:L2Cache));
+                                                  MachineType:L2Cache,
+                                                  clusterID));
       out_msg.MessageSize := MessageSizeType:Writeback_Control;
     }
   }
@@ -508,7 +511,8 @@ machine(MachineType:L1Cache, "L1 cache protocol")
       out_msg.Requestor := machineID;
       out_msg.RequestorMachine := MachineType:L1Cache;
       out_msg.Destination.add(mapAddressToMachine(address,
-                                                  MachineType:L2Cache));
+                                                  MachineType:L2Cache,
+                                                  clusterID));
       out_msg.MessageSize := MessageSizeType:Writeback_Control;
     }
   }
@@ -520,7 +524,8 @@ machine(MachineType:L1Cache, "L1 cache protocol")
       out_msg.Requestor := machineID;
       out_msg.RequestorMachine := MachineType:L1Cache;
       out_msg.Destination.add(mapAddressToMachine(address,
-                                                  MachineType:L2Cache));
+                                                  MachineType:L2Cache,
+                                                  clusterID));
       out_msg.MessageSize := MessageSizeType:Writeback_Control;
     }
   }
@@ -535,7 +540,8 @@ machine(MachineType:L1Cache, "L1 cache protocol")
           out_msg.Sender := machineID;
           out_msg.SenderMachine := MachineType:L1Cache;
           out_msg.Destination.add(mapAddressToMachine(address,
-                                                      MachineType:L2Cache));
+                                                      MachineType:L2Cache,
+                                                      clusterID));
           out_msg.DataBlk := cache_entry.DataBlk;
           // out_msg.Dirty := cache_entry.Dirty;
           out_msg.Dirty := false;
@@ -572,7 +578,8 @@ machine(MachineType:L1Cache, "L1 cache protocol")
           out_msg.Sender := machineID;
           out_msg.SenderMachine := MachineType:L1Cache;
           out_msg.Destination.add(mapAddressToMachine(address,
-                                                      MachineType:L2Cache));
+                                                      MachineType:L2Cache,
+                                                      clusterID));
           out_msg.DataBlk := cache_entry.DataBlk;
           out_msg.Dirty := cache_entry.Dirty;
           out_msg.Acks := in_msg.Acks;
@@ -617,7 +624,8 @@ machine(MachineType:L1Cache, "L1 cache protocol")
           out_msg.Sender := machineID;
           out_msg.SenderMachine := MachineType:L1Cache;
           out_msg.Destination.add(mapAddressToMachine(address,
-                                                      MachineType:L2Cache));
+                                                      MachineType:L2Cache,
+                                                      clusterID));
           out_msg.Acks := 0 - 1; // -1
           out_msg.MessageSize := MessageSizeType:Response_Control;
         }
@@ -632,7 +640,8 @@ machine(MachineType:L1Cache, "L1 cache protocol")
       out_msg.Sender := machineID;
       out_msg.SenderMachine := MachineType:L1Cache;
       out_msg.Destination.add(mapAddressToMachine(address,
-                                                  MachineType:L2Cache));
+                                                  MachineType:L2Cache,
+                                                  clusterID));
       out_msg.MessageSize := MessageSizeType:Unblock_Control;
     }
   }
@@ -644,7 +653,8 @@ machine(MachineType:L1Cache, "L1 cache protocol")
       out_msg.Sender := machineID;
       out_msg.SenderMachine := MachineType:L1Cache;
       out_msg.Destination.add(mapAddressToMachine(address,
-                                                  MachineType:L2Cache));
+                                                  MachineType:L2Cache,
+                                                    clusterID));
       out_msg.MessageSize := MessageSizeType:Unblock_Control;
     }
   }
@@ -755,7 +765,8 @@ machine(MachineType:L1Cache, "L1 cache protocol")
         out_msg.Sender := machineID;
         out_msg.SenderMachine := MachineType:L1Cache;
         out_msg.Destination.add(mapAddressToMachine(address,
-                                                    MachineType:L2Cache));
+                                                    MachineType:L2Cache,
+                                                    clusterID));
         out_msg.Dirty := false;
         out_msg.Acks := 1;
         out_msg.MessageSize := MessageSizeType:Response_Control;
@@ -788,7 +799,8 @@ machine(MachineType:L1Cache, "L1 cache protocol")
           out_msg.Sender := machineID;
           out_msg.SenderMachine := MachineType:L1Cache;
           out_msg.Destination.add(mapAddressToMachine(address,
-                                                      MachineType:L2Cache));
+                                                      MachineType:L2Cache,
+                                                      clusterID));
           out_msg.DataBlk := tbe.DataBlk;
           // out_msg.Dirty := tbe.Dirty;
           out_msg.Dirty := false;
@@ -822,7 +834,8 @@ machine(MachineType:L1Cache, "L1 cache protocol")
           out_msg.Sender := machineID;
           out_msg.SenderMachine := MachineType:L1Cache;
           out_msg.Destination.add(mapAddressToMachine(address,
-                                                      MachineType:L2Cache));
+                                                      MachineType:L2Cache,
+                                                      clusterID));
           out_msg.DataBlk := tbe.DataBlk;
           out_msg.Dirty := tbe.Dirty;
           out_msg.Acks := in_msg.Acks;
@@ -840,7 +853,8 @@ machine(MachineType:L1Cache, "L1 cache protocol")
       out_msg.Requestor := machineID;
       out_msg.RequestorMachine := MachineType:L1Cache;
       out_msg.Destination.add(mapAddressToMachine(address,
-                                                  MachineType:L2Cache));
+                                                  MachineType:L2Cache,
+                                                  clusterID));
       if (tbe.Dirty) {
         out_msg.Type := CoherenceRequestType:WRITEBACK_DIRTY_DATA;
       } else {
