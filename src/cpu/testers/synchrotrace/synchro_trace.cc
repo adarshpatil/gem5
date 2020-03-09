@@ -139,6 +139,11 @@ SynchroTraceReplayer::regStats()
     num_mem
         .name (name() + ".num_mem")
         .desc ("Number of memory ops");
+    // ADARSH We encounter a instructions marker every 2^12 instructions
+    // in the trace so we can increment at that granularity
+    num_inst
+        .name (name() + ".num_inst")
+        .desc ("approx number of instructions");
 }
 void
 SynchroTraceReplayer::init()
@@ -826,6 +831,7 @@ SynchroTraceReplayer::processInsnMarker(ThreadContext& tcxt, CoreID coreId)
 {
     // a simple metadata marker; reschedule the next actual event
     // TODO(soonish) track stats
+    num_inst += 4096;
     schedule(coreEvents[coreId], curTick());
     tcxt.evStream.pop();
 }

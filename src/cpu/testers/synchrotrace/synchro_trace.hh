@@ -158,6 +158,7 @@ class SynchroTraceReplayer : public MemObject
     Stats::Scalar num_iops;
     Stats::Scalar num_flops;
     Stats::Scalar num_mem;
+    Stats::Scalar num_inst;
 
     void regStats();
 
