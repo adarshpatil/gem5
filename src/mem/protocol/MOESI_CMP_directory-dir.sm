@@ -365,7 +365,15 @@ machine(MachineType:Directory, "Directory protocol")
         out_msg.Destination.add(in_msg.OriginalRequestorMachId);
         out_msg.DataBlk := in_msg.DataBlk;
         out_msg.Dirty := false; // By definition, the block is now clean
-        out_msg.Acks := in_msg.Acks;
+        //out_msg.Acks := in_msg.Acks;
+        // ADARSH countLocalSharersExceptRequestor
+        if (getDirectoryEntry(in_msg.addr).Sharers.isElement(in_msg.OriginalRequestorMachId) == true) {
+          out_msg.Acks := (getDirectoryEntry(in_msg.addr).Sharers.count()) - 1;
+        }
+        else {
+          out_msg.Acks := getDirectoryEntry(in_msg.addr).Sharers.count();
+        }
+
         if (in_msg.ReadX) {
           out_msg.Type := CoherenceResponseType:DATA_EXCLUSIVE;
         } else {
@@ -436,6 +444,8 @@ machine(MachineType:Directory, "Directory protocol")
       if ((getDirectoryEntry(in_msg.addr).Sharers.count() > 1) ||
           ((getDirectoryEntry(in_msg.addr).Sharers.count() > 0) &&
            (getDirectoryEntry(in_msg.addr).Sharers.isElement(in_msg.Requestor) == false))) {
+        DPRINTF(RubySlicc, "Address: %#x, Local Sharers: %s, Sharers count: %d\n",
+        in_msg.addr, getDirectoryEntry(in_msg.addr).Sharers, getDirectoryEntry(in_msg.addr).Sharers.count());
         enqueue(forwardNetwork_out, RequestMsg, directory_latency) {
           out_msg.addr := address;
           out_msg.Type := CoherenceRequestType:INV;

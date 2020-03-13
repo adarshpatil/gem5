@@ -726,7 +726,7 @@ machine(MachineType:L1Cache, "L1 cache protocol")
   action(m_decrementNumberOfMessages, "m", desc="Decrement the number of messages for which we're waiting") {
     peek(responseToL1Cache_in, ResponseMsg) {
       assert(is_valid(tbe));
-      DPRINTF(RubySlicc, "L1 decrementNumberOfMessages: %d\n", in_msg.Acks);
+      DPRINTF(RubySlicc, "L1 decrementNumberOfMessages tbe.NumPendingMsgs: %d, in_msg.Acks: %d\n", tbe.NumPendingMsgs, in_msg.Acks);
       tbe.NumPendingMsgs := tbe.NumPendingMsgs - in_msg.Acks;
     }
   }

@@ -1399,6 +1399,7 @@ machine(MachineType:L2Cache, "Token protocol")
   action(m_decrementNumberOfMessagesInt, "\m", desc="Decrement the number of messages for which we're waiting") {
     peek(responseNetwork_in, ResponseMsg) {
       assert(is_valid(tbe));
+      DPRINTF(RubySlicc, "ADARSH m Address: %#x, NumIntPendingAcks: %d, in_msg:Acks: %d\n", address, tbe.NumIntPendingAcks, in_msg.Acks);
       tbe.NumIntPendingAcks := tbe.NumIntPendingAcks + in_msg.Acks;
     }
   }
@@ -1406,6 +1407,7 @@ machine(MachineType:L2Cache, "Token protocol")
   action(m_decrementNumberOfMessagesExt, "\mmm", desc="Decrement the number of messages for which we're waiting") {
     peek(responseNetwork_in, ResponseMsg) {
       assert(is_valid(tbe));
+      DPRINTF(RubySlicc, "ADARSH mmm Address: %#x, NumExtPendingAcks: %d, in_msg:Acks: %d\n", address, tbe.NumExtPendingAcks, in_msg.Acks);
       tbe.NumExtPendingAcks := tbe.NumExtPendingAcks - in_msg.Acks;
     }
   }
@@ -1413,6 +1415,7 @@ machine(MachineType:L2Cache, "Token protocol")
   action(mm_decrementNumberOfMessagesExt, "\mm", desc="Decrement the number of messages for which we're waiting") {
     peek(requestNetwork_in, RequestMsg) {
       assert(is_valid(tbe));
+      DPRINTF(RubySlicc, "ADARSH mm Address: %#x, NumExtPendingAcks: %d, in_msg:Acks: %d\n", address, tbe.NumExtPendingAcks, in_msg.Acks);
       tbe.NumExtPendingAcks := tbe.NumExtPendingAcks - in_msg.Acks;
     }
   }
