@@ -81,6 +81,9 @@ def define_options(parser):
     parser.add_option("--recycle-latency", type="int", default=10,
                       help="Recycle latency for ruby controller input buffers")
 
+    parser.add_option("--mem_replication", action="store_true",
+                      help="Replication in DRAM")
+
     protocol = buildEnv['PROTOCOL']
     exec("from . import %s" % protocol)
     eval("%s.define_options(parser)" % protocol)
@@ -236,6 +239,16 @@ def create_directories(options, bootmem, ruby_system, system):
 
         exec("ruby_system.dir_cntrl%d = dir_cntrl" % i)
         dir_cntrl_nodes.append(dir_cntrl)
+
+    if options.mem_replication:
+        print ("Ruby.py Memory Replication setup")
+        assert((options.num_dirs%2) == 0)
+        for i, dir_cntrl in enumerate(dir_cntrl_nodes, start=1):
+            # replicated coupled directories are consecutive
+            # i.e. 0-n, 1-(n-1), 2-(n-2)
+            # change the logic here if needed to change coupling
+            dir_cntrl.replica_version = options.num_dirs - i
+            dir_cntrl.replica_directory = dir_cntrl_nodes[options.num_dirs - i].directory
 
     if bootmem is not None:
         rom_dir_cntrl = Directory_Controller()

@@ -670,6 +670,13 @@ class DDR4_2400_8x8(DDR4_2400_16x4):
     IDD4R = '135mA'
     IDD3P1 = '37mA'
 
+# ADARSH modified above config for single rank
+# Total channel capacity is 8GB
+# 8 devices/rank * 1 ranks/channel * 1GB/device = 8GB/channel
+class DDR4_2400_8x8_1rank(DDR4_2400_8x8):
+    # Single rank
+    ranks_per_channel = 1    
+
 # A single DDR4-2400 x64 channel (one command and address bus), with
 # timings based on a DDR4-2400 8 Gbit datasheet (Micron MT40A512M16)
 # in an 4x16 configuration.
