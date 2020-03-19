@@ -249,6 +249,12 @@ def create_directories(options, bootmem, ruby_system, system):
             # change the logic here if needed to change coupling
             dir_cntrl.replica_version = options.num_dirs - i
             dir_cntrl.replica_directory = dir_cntrl_nodes[options.num_dirs - i].directory
+    else:
+        # no replication flag 
+        # set replica as itself, because we cannot leave these parameters unset
+        for i, dir_cntrl in enumerate(dir_cntrl_nodes, start=0):
+            dir_cntrl.replica_version = i
+            dir_cntrl.replica_directory = dir_cntrl_nodes[i].directory
 
     if bootmem is not None:
         rom_dir_cntrl = Directory_Controller()
