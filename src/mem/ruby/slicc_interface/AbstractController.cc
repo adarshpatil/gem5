@@ -374,10 +374,15 @@ MachineID
 AbstractController::mapAddressToMachine(Addr addr, MachineType mtype,
                                         NodeID clusterID) const
 {
-    // ADARSH we know node l1 0-7 have clusterID 0 and l2 8-15 have clusterID 1
-    // hence we return (L2Cache,clusterID)
+    // ADARSH we init clusterID for each of the L1 and L2 controller created
+    // in config MOESI_CMP_directory.py
+    // in this overloaded function we return
+    // (local L2Cache,clusterID) when L1 cache calls this to mapAddressToL2
+    // (local Dir, clusterID) when L2 cache calls this to mapAddressToDir
+    // FIXME : this won't work if there are multiple L2s or Dirs in each cluster
+    // and address are interleaved between them
     NodeID node;
-    if(mtype == MachineType_L2Cache)
+    if(mtype == MachineType_L2Cache || mtype == MachineType_Directory)
     {
         node = clusterID;
     }

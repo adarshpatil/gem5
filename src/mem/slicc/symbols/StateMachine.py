@@ -345,7 +345,7 @@ TransitionResult doTransition(${ident}_Event event,
 ''')
 
         code('''
-                              Addr addr);
+                              Addr addr, bool replica = false);
 
 TransitionResult doTransitionWorker(${ident}_Event event,
                                     ${ident}_State state,
@@ -1186,6 +1186,7 @@ ${ident}_Controller::wakeup()
 TransitionResult
 ${ident}_Controller::doTransition(${ident}_Event event,
 ''')
+        # ADARSH self.EntryType==None self.TBEType!=None for directory
         if self.EntryType != None:
             code('''
                                   ${{self.EntryType.c_ident}}* m_cache_entry_ptr,
@@ -1195,11 +1196,25 @@ ${ident}_Controller::doTransition(${ident}_Event event,
                                   ${{self.TBEType.c_ident}}* m_tbe_ptr,
 ''')
         code('''
-                                  Addr addr)
+                                  Addr addr, bool replica)
 {
 ''')
         code.indent()
-
+        code('TransitionResult result;')
+        if self.ident == 'Directory':
+            code('''
+if((*m_replica_directory_ptr).isPresent(addr)) {
+    RubySystem *rs = params()->ruby_system;
+    std::map<uint32_t, AbstractController *>::iterator it =
+                    rs->m_abstract_controls[MachineType_Directory].find(m_replica_version);
+    assert(it != rs->m_abstract_controls[MachineType_Directory].end());
+    DPRINTF(RubyGenerated, "Accessing replica\\n");
+    Directory_Controller * replica_controller;
+    assert(replica_controller = dynamic_cast<Directory_Controller*>(it->second));
+    result = replica_controller->doTransition(event, m_tbe_ptr, addr);
+}
+else {
+''')
         if self.TBEType != None and self.EntryType != None:
             code('${ident}_State state = getState(m_tbe_ptr, m_cache_entry_ptr, addr);')
         elif self.TBEType != None:
@@ -1216,7 +1231,7 @@ DPRINTF(RubyGenerated, "%s, Time: %lld, state: %s, event: %s, addr: %#x\\n",
         *this, curCycle(), ${ident}_State_to_string(state),
         ${ident}_Event_to_string(event), addr);
 
-TransitionResult result =
+result =
 ''')
         if self.TBEType != None and self.EntryType != None:
             code('doTransitionWorker(event, state, next_state, m_tbe_ptr, m_cache_entry_ptr, addr);')
@@ -1275,9 +1290,10 @@ if (result == TransitionResult_Valid) {
              ${ident}_State_to_string(next_state),
              printAddress(addr), "Protocol Stall");
 }
-
-return result;
 ''')
+        if self.ident == 'Directory':
+            code('}')
+        code('return result;')
         code.dedent()
         code('''
 }
