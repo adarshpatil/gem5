@@ -84,6 +84,9 @@ def define_options(parser):
     parser.add_option("--mem_replication", action="store_true",
                       help="Replication in DRAM")
 
+    parser.add_option("--qpi_latency", type="int", default=200,
+                      help="QPI latency")
+
     protocol = buildEnv['PROTOCOL']
     exec("from . import %s" % protocol)
     eval("%s.define_options(parser)" % protocol)
@@ -236,6 +239,7 @@ def create_directories(options, bootmem, ruby_system, system):
         dir_cntrl.version = i
         dir_cntrl.directory = RubyDirectoryMemory()
         dir_cntrl.ruby_system = ruby_system
+        dir_cntrl.qpi_latency = options.qpi_latency
 
         exec("ruby_system.dir_cntrl%d = dir_cntrl" % i)
         dir_cntrl_nodes.append(dir_cntrl)

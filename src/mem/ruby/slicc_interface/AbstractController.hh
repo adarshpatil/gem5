@@ -169,6 +169,10 @@ class AbstractController : public ClockedObject, public Consumer
     MachineID mapAddressToMachine(Addr addr, MachineType mtype) const;
     MachineID mapAddressToMachine(Addr addr, MachineType mtype, NodeID clusterID) const;
 
+    bool isLocalRequest(MachineID mid) {
+      return (mid.getNum()==this->m_machineID.getNum());
+    }
+
   protected:
     //! Profiles original cache requests including PUTs
     void profileRequest(const std::string &request);
@@ -203,6 +207,7 @@ class AbstractController : public ClockedObject, public Consumer
     const int m_transitions_per_cycle;
     const unsigned int m_buffer_size;
     Cycles m_recycle_latency;
+    Cycles m_qpi_latency;
     const Cycles m_mandatory_queue_latency;
 
     //! Counter for the number of cycles when the transitions carried out

@@ -31,6 +31,7 @@ NodeID version;
 MachineID machineID;
 NodeID clusterID;
 Cycles recycle_latency;
+Cycles qpi_latency;
 
 // Functions implemented in the AbstractController class for
 // making timing access to the memory maintained by the

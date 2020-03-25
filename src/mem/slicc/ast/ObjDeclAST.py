@@ -57,6 +57,8 @@ class ObjDeclAST(DeclAST):
             c_code = "m_clusterID"
         elif self.ident == "recycle_latency":
             c_code = "m_recycle_latency"
+        elif self.ident == "qpi_latency":
+            c_code = "m_qpi_latency"
         else:
             c_code = "(*m_%s_ptr)" % (self.ident)
 
