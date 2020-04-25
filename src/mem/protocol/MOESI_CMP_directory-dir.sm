@@ -243,9 +243,7 @@ machine(MachineType:Directory, "Directory protocol")
       if (getDirectoryEntry(addr).DirectoryState == State:I ||
           getDirectoryEntry(addr).DirectoryState == State:S ||
           getDirectoryEntry(addr).DirectoryState == State:IS ||
-          getDirectoryEntry(addr).DirectoryState == State:SS ||
-          getDirectoryEntry(addr).DirectoryState == State:OS ||
-          getDirectoryEntry(addr).DirectoryState == State:OSS) {
+          getDirectoryEntry(addr).DirectoryState == State:SS) {
             return true;
           }
     }
@@ -263,7 +261,8 @@ machine(MachineType:Directory, "Directory protocol")
       peek(unblockNetwork_in, ResponseMsg) {
         DPRINTF(RubySlicc, "ADARSH unblockNetwork_in Address: %#x, qpi_latency %d\n", in_msg.addr, qpi_latency);
         if (in_msg.Type == CoherenceResponseType:UNBLOCK) {
-          if( (isLocalRequest(in_msg.Sender) == false) && (in_msg.Seen == false) ) {
+          if( (isLocalRequest(in_msg.Sender) == false) && (in_msg.Seen == false)
+              && (isIorS(in_msg.addr) == false) ) {
             unblockNetwork_in.recycle(clockEdge(), cyclesToTicks(qpi_latency));
             in_msg.Seen := true;
           } else {
@@ -277,6 +276,8 @@ machine(MachineType:Directory, "Directory protocol")
           }
         } else if (in_msg.Type == CoherenceResponseType:UNBLOCK_EXCLUSIVE) {
           if( (isLocalRequest(in_msg.Sender) == false) && (in_msg.Seen == false) ) {
+            // UNBLOCK_EXCLUSIVE moves to M state which requires replica to be notified
+            // hence QPI latency incurred here
             unblockNetwork_in.recycle(clockEdge(), cyclesToTicks(qpi_latency));
             in_msg.Seen := true;
           } else {
@@ -284,14 +285,11 @@ machine(MachineType:Directory, "Directory protocol")
                     TBEs[in_msg.addr]);
           }
         } else if (in_msg.Type == CoherenceResponseType:DATA_EXCLUSIVE) {
-          if( (isLocalRequest(in_msg.Sender) == false) && (in_msg.Seen == false) ) {
-            unblockNetwork_in.recycle(clockEdge(), cyclesToTicks(qpi_latency));
-            in_msg.Seen := true;
-          } else {
-            trigger(Event:Data, in_msg.addr,
-                    TBEs[in_msg.addr]);
-          }
+          // ADARSH happens only for DMA
+          trigger(Event:Data, in_msg.addr,
+                  TBEs[in_msg.addr]);
         } else if (in_msg.Type == CoherenceResponseType:DMA_ACK) {
+          // ADARSH happens only for DMA
           trigger(Event:DMA_ACK, in_msg.addr,
                   TBEs[in_msg.addr]);
         } else {
@@ -396,8 +394,16 @@ machine(MachineType:Directory, "Directory protocol")
 
   action(a_sendWriteBackAck, "a", desc="Send writeback ack to requestor") {
     peek(requestQueue_in, RequestMsg) {
-          DPRINTF(RubySlicc, "ADARSH a_sendWriteBackAck Address: %#x, qpi_latency %d\n", address, qpi_latency);
-      enqueue(responseNetwork_out, ResponseMsg, (directory_latency+qpi_latency)) {
+      // writeback ack is sent only for PUTX/PUTO/PUTO_SHARERS in O or M state
+      // which local directory cannot know (home dir has to consulted)
+      // for requests in the node of the home directory no qpi_latency
+      if(isLocalRequest(in_msg.Requestor) == false) {
+        delay := qpi_latency;
+      } else {
+        delay := to_memory_controller_latency;
+      }
+      DPRINTF(RubySlicc, "ADARSH a_sendWriteBackAck Address: %#x, delay %d\n", address, delay);
+      enqueue(responseNetwork_out, ResponseMsg, delay) {
         out_msg.addr := address;
         out_msg.Type := CoherenceResponseType:WB_ACK;
         out_msg.Sender := in_msg.Requestor;
@@ -410,8 +416,10 @@ machine(MachineType:Directory, "Directory protocol")
 
   action(b_sendWriteBackNack, "b", desc="Send writeback nack to requestor") {
     peek(requestQueue_in, RequestMsg) {
-      DPRINTF(RubySlicc, "ADARSH b_sendWriteBackNack Address: %#x, qpi_latency %d\n", address, qpi_latency);
-      enqueue(responseNetwork_out, ResponseMsg, (directory_latency+qpi_latency)) {
+      // writeback nack is generated only when in I or S state (see table) 
+      // OR in O state and PUTX for which L2 cache state machine will crash/empty cannot happen
+      // oracle implmentation always knows isIorS locally so we dont have to add QPI latency
+      enqueue(responseNetwork_out, ResponseMsg, (directory_latency)) {
         out_msg.addr := address;
         out_msg.Type := CoherenceResponseType:WB_NACK;
         out_msg.Sender := in_msg.Requestor;
@@ -495,6 +503,11 @@ machine(MachineType:Directory, "Directory protocol")
 
   action(f_forwardRequest, "f", desc="Forward request to owner") {
     peek(requestQueue_in, RequestMsg) {
+      DPRINTF(RubySlicc, "Address: %#x, Local Sharers: %s, Sharers count: %d\n",
+        in_msg.addr, getDirectoryEntry(in_msg.addr).Sharers, getDirectoryEntry(in_msg.addr).Sharers.count());
+      // forward request happens on GETS/GETX in O or M or OO states so always QPI latency is required
+      // even if its from local or remote L2 because forwarding crosses QPI link
+      // even if there are multiple forward destinations it is bound by the farthest one
       enqueue(forwardNetwork_out, RequestMsg, (directory_latency+qpi_latency)) {
         out_msg.addr := address;
         out_msg.Type := in_msg.Type;
@@ -582,12 +595,27 @@ machine(MachineType:Directory, "Directory protocol")
   }
 
   action(qw_queueMemoryWBFromCacheRequest, "qw", desc="Queue off-chip writeback request") {
+    // the writeback has to happen to both replicas and the request is bounded by the 
+    // longest latency (writing to remote replica) = memwrite_latency + qpi_lateny
+    // for local requests = to_memory_controller_latency + qpi_latency
+    // for remote requests = we can hide the latency of the replica write by sending
+    // it along with the unblock which has qpi_latency so only to_memory_controller_latency
     peek(requestQueue_in, RequestMsg) {
       if (is_valid(tbe)) {
-        queueMemoryWrite(tbe.Requestor, address, to_memory_controller_latency,
+        if(isLocalRequest(tbe.Requestor) == false) {
+          delay := to_memory_controller_latency;
+        } else {
+          delay := to_memory_controller_latency + qpi_latency;
+        }
+        queueMemoryWrite(tbe.Requestor, address, delay,
                          in_msg.DataBlk);
       } else {
-        queueMemoryWrite(in_msg.Requestor, address, to_memory_controller_latency,
+        if(isLocalRequest(in_msg.Requestor) == false) {
+          delay := to_memory_controller_latency;
+        } else {
+          delay := to_memory_controller_latency + qpi_latency;
+        }
+        queueMemoryWrite(in_msg.Requestor, address, delay,
                          in_msg.DataBlk);
       }
     }
