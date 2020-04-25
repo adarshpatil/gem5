@@ -138,6 +138,7 @@ machine(MachineType:Directory, "Directory protocol")
   void set_tbe(TBE b);
   void unset_tbe();
   bool isLocalRequest(MachineID mid);
+  bool isLocalDest(NetDest dest);
 
   Entry getDirectoryEntry(Addr addr), return_by_pointer="yes" {
     Entry dir_entry := static_cast(Entry, "pointer", directory[addr]);
@@ -284,13 +285,9 @@ machine(MachineType:Directory, "Directory protocol")
                     TBEs[in_msg.addr]);
           }
         } else if (in_msg.Type == CoherenceResponseType:DATA_EXCLUSIVE) {
-          if( (isLocalRequest(in_msg.Sender) == false) && (in_msg.Seen == false) ) {
-            unblockNetwork_in.recycle(clockEdge(), cyclesToTicks(qpi_latency));
-            in_msg.Seen := true;
-          } else {
-            trigger(Event:Data, in_msg.addr,
-                    TBEs[in_msg.addr]);
-          }
+          // triggered only for DMA
+          trigger(Event:Data, in_msg.addr,
+                  TBEs[in_msg.addr]);
         } else if (in_msg.Type == CoherenceResponseType:DMA_ACK) {
           trigger(Event:DMA_ACK, in_msg.addr,
                   TBEs[in_msg.addr]);
@@ -312,8 +309,7 @@ machine(MachineType:Directory, "Directory protocol")
           DPRINTF(RubySlicc, "ADARSH GETS isLocalRequest %d, Seen %d, isIorS %d\n",
                   isLocalRequest(in_msg.Requestor), in_msg.Seen, isIorS(in_msg.addr));
           // QPI latency only if the the directory entry for addr is NOT in I or S state
-          if( (isLocalRequest(in_msg.Requestor) == false) && (in_msg.Seen == false)
-              && (isIorS(in_msg.addr) == false) ) {
+          if( (isLocalRequest(in_msg.Requestor) == false) && (in_msg.Seen == false) ) {
             requestQueue_in.recycle(clockEdge(), cyclesToTicks(qpi_latency));
             in_msg.Seen := true;
           } else {
@@ -396,8 +392,13 @@ machine(MachineType:Directory, "Directory protocol")
 
   action(a_sendWriteBackAck, "a", desc="Send writeback ack to requestor") {
     peek(requestQueue_in, RequestMsg) {
-          DPRINTF(RubySlicc, "ADARSH a_sendWriteBackAck Address: %#x, qpi_latency %d\n", address, qpi_latency);
-      enqueue(responseNetwork_out, ResponseMsg, (directory_latency+qpi_latency)) {
+      DPRINTF(RubySlicc, "ADARSH a_sendWriteBackAck Address: %#x, qpi_latency %d\n", address, qpi_latency);
+      if(isLocalRequest(in_msg.Requestor) == false) {
+        delay := qpi_latency;
+      } else {
+        delay := to_memory_controller_latency;
+      }
+      enqueue(responseNetwork_out, ResponseMsg, delay) {
         out_msg.addr := address;
         out_msg.Type := CoherenceResponseType:WB_ACK;
         out_msg.Sender := in_msg.Requestor;
@@ -411,7 +412,12 @@ machine(MachineType:Directory, "Directory protocol")
   action(b_sendWriteBackNack, "b", desc="Send writeback nack to requestor") {
     peek(requestQueue_in, RequestMsg) {
       DPRINTF(RubySlicc, "ADARSH b_sendWriteBackNack Address: %#x, qpi_latency %d\n", address, qpi_latency);
-      enqueue(responseNetwork_out, ResponseMsg, (directory_latency+qpi_latency)) {
+      if(isLocalRequest(in_msg.Requestor) == false) {
+        delay := qpi_latency;
+      } else {
+        delay := to_memory_controller_latency;
+      }
+      enqueue(responseNetwork_out, ResponseMsg, delay) {
         out_msg.addr := address;
         out_msg.Type := CoherenceResponseType:WB_NACK;
         out_msg.Sender := in_msg.Requestor;
@@ -439,7 +445,7 @@ machine(MachineType:Directory, "Directory protocol")
     peek(memQueue_in, MemoryMsg) {
       // ADARSH remote GETS simulating a local read have no QPI latency
       // a local read is possible only if line is in IorS state
-      if( isLocalRequest(in_msg.OriginalRequestorMachId) == false && isIorS(in_msg.addr) == false ) {
+      if( isLocalRequest(in_msg.OriginalRequestorMachId) == false ) {
         delay := qpi_latency;
       } else {
         delay := to_memory_controller_latency;
@@ -495,7 +501,13 @@ machine(MachineType:Directory, "Directory protocol")
 
   action(f_forwardRequest, "f", desc="Forward request to owner") {
     peek(requestQueue_in, RequestMsg) {
-      enqueue(forwardNetwork_out, RequestMsg, (directory_latency+qpi_latency)) {
+      // add QPI latency if even one of the (NetDest) owner is remote
+      if(isLocalDest(getDirectoryEntry(in_msg.addr).Owner) == false) {
+        delay := qpi_latency;
+      } else {
+        delay := to_memory_controller_latency;
+      }
+      enqueue(forwardNetwork_out, RequestMsg, delay) {
         out_msg.addr := address;
         out_msg.Type := in_msg.Type;
         out_msg.Requestor := in_msg.Requestor;
@@ -511,6 +523,7 @@ machine(MachineType:Directory, "Directory protocol")
   }
 
   action(f_forwardRequestDirIsRequestor, "\f", desc="Forward request to owner") {
+    // triggered only for DMA
     peek(requestQueue_in, RequestMsg) {
       enqueue(forwardNetwork_out, RequestMsg, directory_latency) {
         out_msg.addr := address;
@@ -534,7 +547,13 @@ machine(MachineType:Directory, "Directory protocol")
            (getDirectoryEntry(in_msg.addr).Sharers.isElement(in_msg.Requestor) == false))) {
         DPRINTF(RubySlicc, "Address: %#x, Local Sharers: %s, Sharers count: %d\n",
         in_msg.addr, getDirectoryEntry(in_msg.addr).Sharers, getDirectoryEntry(in_msg.addr).Sharers.count());
-        enqueue(forwardNetwork_out, RequestMsg, (directory_latency+qpi_latency)) {
+        // add QPI latency if even one of the (NetDest) sharers is remote
+        if(isLocalDest(getDirectoryEntry(in_msg.addr).Sharers) == false) {
+          delay := qpi_latency;
+        } else {
+          delay := to_memory_controller_latency;
+        }        
+        enqueue(forwardNetwork_out, RequestMsg, delay) {
           out_msg.addr := address;
           out_msg.Type := CoherenceRequestType:INV;
           out_msg.Requestor := in_msg.Requestor;

@@ -173,6 +173,16 @@ class AbstractController : public ClockedObject, public Consumer
       return (mid.getNum()==this->m_machineID.getNum());
     }
 
+    bool isLocalDest(NetDest dest) {
+      for (int i=0; i<MachineType_base_count(MachineType::MachineType_L2Cache); i++){
+        if (i==this->m_machineID.getNum())
+          continue;
+        if (dest.elementAt(MachineID(MachineType::MachineType_L2Cache,i)) != 0)
+          return false;
+      }
+      return true;
+    }
+
   protected:
     //! Profiles original cache requests including PUTs
     void profileRequest(const std::string &request);
