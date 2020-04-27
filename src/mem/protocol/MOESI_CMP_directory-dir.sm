@@ -42,6 +42,7 @@ machine(MachineType:Directory, "Directory protocol")
 :  DirectoryMemory * directory;
    Cycles directory_latency := 10;
    Cycles to_memory_controller_latency := 1;
+   Cycles delta_error_margin := 100;
    NodeID replica_version;
    DirectoryMemory * replica_directory;
    Cycles delay := 1;
@@ -138,6 +139,7 @@ machine(MachineType:Directory, "Directory protocol")
   void set_tbe(TBE b);
   void unset_tbe();
   bool isLocalRequest(MachineID mid);
+  bool isLocalDest(NetDest dest);
 
   Entry getDirectoryEntry(Addr addr), return_by_pointer="yes" {
     Entry dir_entry := static_cast(Entry, "pointer", directory[addr]);
@@ -310,6 +312,7 @@ machine(MachineType:Directory, "Directory protocol")
           DPRINTF(RubySlicc, "ADARSH GETS isLocalRequest %d, Seen %d, isIorS %d\n",
                   isLocalRequest(in_msg.Requestor), in_msg.Seen, isIorS(in_msg.addr));
           // QPI latency only if the the directory entry for addr is NOT in I or S state
+          // oracle knows if isIorS so GETS requests can be processed immediately
           if( (isLocalRequest(in_msg.Requestor) == false) && (in_msg.Seen == false)
               && (isIorS(in_msg.addr) == false) ) {
             requestQueue_in.recycle(clockEdge(), cyclesToTicks(qpi_latency));
@@ -318,6 +321,8 @@ machine(MachineType:Directory, "Directory protocol")
             trigger(Event:GETS, in_msg.addr, TBEs[in_msg.addr]);
           }
         } else if (in_msg.Type == CoherenceRequestType:GETX) {
+          // GETX has to contact replica but for oracle knows isIorS and
+          // can queue fetch request latency in parallel with contact replica (TODO/FIXME)
           if( (isLocalRequest(in_msg.Requestor) == false) && (in_msg.Seen == false) ) {
             requestQueue_in.recycle(clockEdge(), cyclesToTicks(qpi_latency));
             in_msg.Seen := true;
@@ -325,14 +330,18 @@ machine(MachineType:Directory, "Directory protocol")
             trigger(Event:GETX, in_msg.addr, TBEs[in_msg.addr]);
           }
         } else if (in_msg.Type == CoherenceRequestType:PUTX) {
-          if( (isLocalRequest(in_msg.Requestor) == false) && (in_msg.Seen == false) ) {
+          // oracle knows if isIorS so the IorS PUTX requests can be processed immediately
+          if( (isLocalRequest(in_msg.Requestor) == false) && (in_msg.Seen == false) 
+              && (isIorS(in_msg.addr) == false) ) {
             requestQueue_in.recycle(clockEdge(), cyclesToTicks(qpi_latency));
             in_msg.Seen := true;
           } else {
             trigger(Event:PUTX, in_msg.addr, TBEs[in_msg.addr]);
           }
         } else if (in_msg.Type == CoherenceRequestType:PUTO) {
-          if( (isLocalRequest(in_msg.Requestor) == false) && (in_msg.Seen == false) ) {
+          // oracle knows if isIorS so the IorS PUTO requests can be processed immediately
+          if( (isLocalRequest(in_msg.Requestor) == false) && (in_msg.Seen == false)
+              && (isIorS(in_msg.addr) == false) ) {
             requestQueue_in.recycle(clockEdge(), cyclesToTicks(qpi_latency));
             in_msg.Seen := true;
           } else {
@@ -419,7 +428,12 @@ machine(MachineType:Directory, "Directory protocol")
       // writeback nack is generated only when in I or S state (see table) 
       // OR in O state and PUTX for which L2 cache state machine will crash/empty cannot happen
       // oracle implmentation always knows isIorS locally so we dont have to add QPI latency
-      enqueue(responseNetwork_out, ResponseMsg, (directory_latency)) {
+      if((isLocalRequest(in_msg.Requestor) == false) && (isIorS(address) == false)) {
+        delay := qpi_latency;
+      } else {
+        delay := to_memory_controller_latency;
+      }
+      enqueue(responseNetwork_out, ResponseMsg, delay) {
         out_msg.addr := address;
         out_msg.Type := CoherenceResponseType:WB_NACK;
         out_msg.Sender := in_msg.Requestor;
@@ -447,8 +461,18 @@ machine(MachineType:Directory, "Directory protocol")
     peek(memQueue_in, MemoryMsg) {
       // ADARSH remote GETS simulating a local read have no QPI latency
       // a local read is possible only if line is in IorS state
-      if( isLocalRequest(in_msg.OriginalRequestorMachId) == false && isIorS(in_msg.addr) == false ) {
+      if( (isLocalRequest(in_msg.OriginalRequestorMachId) == false) && (isIorS(in_msg.addr) == false) ) {
         delay := qpi_latency;
+      } else if ( (isLocalRequest(in_msg.OriginalRequestorMachId) == false) 
+                && (getDirectoryEntry(in_msg.addr).DirectoryState == State:MM)) {
+        // GETX has to contact replica but for isIorS states mem fetch request can be done in parallel with contact replica
+        // i.e. total delay should be larger(qpi_latency,mem_access_latency)
+        // since mem_access_latency has already elapsed, here delay = if(mem_access_latency > qpi_latency) then 1 else qpi_latency - mem_access_latency
+        // from stats we know avgMemAccLat < qpi_latency - but avgMemAccLat depends on benchmark 
+        // delay = qpi_latency ~= mem_access_latency + delta 
+        // for simplicity we assume delta=100, (qpi_latency - mem_access_latency) = 100 for all benchmarks
+        // FIXME : keep a timer from the time mem access was requested to count time elapsed
+        delay := delta_error_margin;
       } else {
         delay := to_memory_controller_latency;
       }
@@ -507,8 +531,13 @@ machine(MachineType:Directory, "Directory protocol")
         in_msg.addr, getDirectoryEntry(in_msg.addr).Sharers, getDirectoryEntry(in_msg.addr).Sharers.count());
       // forward request happens on GETS/GETX in O or M or OO states so always QPI latency is required
       // even if its from local or remote L2 because forwarding crosses QPI link
-      // even if there are multiple forward destinations it is bound by the farthest one
-      enqueue(forwardNetwork_out, RequestMsg, (directory_latency+qpi_latency)) {
+      // add QPI latency if even one of the (NetDest) owner is remote
+      if(isLocalDest(getDirectoryEntry(in_msg.addr).Owner) == false) {
+        delay := qpi_latency;
+      } else {
+        delay := to_memory_controller_latency;
+      }
+      enqueue(forwardNetwork_out, RequestMsg, delay) {
         out_msg.addr := address;
         out_msg.Type := in_msg.Type;
         out_msg.Requestor := in_msg.Requestor;
@@ -524,6 +553,7 @@ machine(MachineType:Directory, "Directory protocol")
   }
 
   action(f_forwardRequestDirIsRequestor, "\f", desc="Forward request to owner") {
+    // triggered only for DMA
     peek(requestQueue_in, RequestMsg) {
       enqueue(forwardNetwork_out, RequestMsg, directory_latency) {
         out_msg.addr := address;
@@ -547,7 +577,13 @@ machine(MachineType:Directory, "Directory protocol")
            (getDirectoryEntry(in_msg.addr).Sharers.isElement(in_msg.Requestor) == false))) {
         DPRINTF(RubySlicc, "Address: %#x, Local Sharers: %s, Sharers count: %d\n",
         in_msg.addr, getDirectoryEntry(in_msg.addr).Sharers, getDirectoryEntry(in_msg.addr).Sharers.count());
-        enqueue(forwardNetwork_out, RequestMsg, (directory_latency+qpi_latency)) {
+        // add QPI latency if even one of the (NetDest) sharers is remote
+        if(isLocalDest(getDirectoryEntry(in_msg.addr).Sharers) == false) {
+          delay := qpi_latency;
+        } else {
+          delay := to_memory_controller_latency;
+        }        
+        enqueue(forwardNetwork_out, RequestMsg, delay) {
           out_msg.addr := address;
           out_msg.Type := CoherenceRequestType:INV;
           out_msg.Requestor := in_msg.Requestor;
@@ -595,27 +631,15 @@ machine(MachineType:Directory, "Directory protocol")
   }
 
   action(qw_queueMemoryWBFromCacheRequest, "qw", desc="Queue off-chip writeback request") {
-    // the writeback has to happen to both replicas and the request is bounded by the 
-    // longest latency (writing to remote replica) = memwrite_latency + qpi_lateny
-    // for local requests = to_memory_controller_latency + qpi_latency
-    // for remote requests = we can hide the latency of the replica write by sending
-    // it along with the unblock which has qpi_latency so only to_memory_controller_latency
+    // writeback happens to both replicas in parallel 
+    // when L2 sends dirty_writeback it faces QPI latency and both replicas now have the data
+    // writeback to mem happens to both replicas in parallel - no QPI latency needed here
     peek(requestQueue_in, RequestMsg) {
       if (is_valid(tbe)) {
-        if(isLocalRequest(tbe.Requestor) == false) {
-          delay := to_memory_controller_latency;
-        } else {
-          delay := to_memory_controller_latency + qpi_latency;
-        }
-        queueMemoryWrite(tbe.Requestor, address, delay,
+        queueMemoryWrite(tbe.Requestor, address, to_memory_controller_latency,
                          in_msg.DataBlk);
       } else {
-        if(isLocalRequest(in_msg.Requestor) == false) {
-          delay := to_memory_controller_latency;
-        } else {
-          delay := to_memory_controller_latency + qpi_latency;
-        }
-        queueMemoryWrite(in_msg.Requestor, address, delay,
+        queueMemoryWrite(in_msg.Requestor, address, to_memory_controller_latency,
                          in_msg.DataBlk);
       }
     }
