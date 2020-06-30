@@ -67,7 +67,6 @@ AbstractController::AbstractController(const Params *p)
         // of this particular type.
         Stats::registerDumpCallback(new StatsCallback(this));
     }
-    std::cout << name() << "\n";
 }
 
 void

@@ -50,5 +50,3 @@ Addr makeNextStrideAddress(Addr addr, int stride);
 structure(BoolVec, external="yes") {
 }
 int countBoolVec(BoolVec bVec);
-structure(AddrSet, external="yes") {
-}

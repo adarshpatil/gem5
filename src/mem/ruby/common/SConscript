@@ -37,7 +37,6 @@ env.Append(CPPDEFINES={'NUMBER_BITS_PER_SET': env['NUMBER_BITS_PER_SET']})
 
 Source('Address.cc')
 Source('BoolVec.cc')
-Source('AddrSet.cc')
 Source('Consumer.cc')
 Source('DataBlock.cc')
 Source('Histogram.cc')

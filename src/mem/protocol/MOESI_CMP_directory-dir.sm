@@ -109,12 +109,6 @@ machine(MachineType:Directory, "Directory protocol")
 
   // TYPES
 
-  structure(AddrSet, external="yes") {
-    void insert(Addr);
-    void find(int);
-    void erase(Addr);
-  }
-
   // DirectoryEntry
   structure(Entry, desc="...", interface='AbstractEntry') {
     State DirectoryState,          desc="Directory state";
@@ -146,7 +140,6 @@ machine(MachineType:Directory, "Directory protocol")
   void unset_tbe();
   bool isLocalRequest(MachineID mid);
   bool isLocalDest(NetDest dest);
-  AddrSet replicaAddress;
 
   Entry getDirectoryEntry(Addr addr), return_by_pointer="yes" {
     Entry dir_entry := static_cast(Entry, "pointer", directory[addr]);
@@ -325,9 +318,6 @@ machine(MachineType:Directory, "Directory protocol")
             requestQueue_in.recycle(clockEdge(), cyclesToTicks(qpi_latency));
             in_msg.Seen := true;
           } else {
-            if((isLocalRequest(in_msg.Requestor) == true) && (in_msg.Seen == false)) {
-             replicaAddress.insert(in_msg.addr);
-            }
             trigger(Event:GETS, in_msg.addr, TBEs[in_msg.addr]);
           }
         } else if (in_msg.Type == CoherenceRequestType:GETX) {
