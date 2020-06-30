@@ -37,6 +37,7 @@ Cycles qpi_latency;
 // making timing access to the memory maintained by the
 // memory controllers.
 void queueMemoryRead(MachineID id, Addr addr, Cycles latency);
+void queueMemoryRead(MachineID id, Addr addr, Cycles latency, bool isIorS);
 void queueMemoryWrite(MachineID id, Addr addr, Cycles latency,
                       DataBlock block);
 void queueMemoryWritePartial(MachineID id, Addr addr, Cycles latency,

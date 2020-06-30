@@ -93,12 +93,15 @@ def mem_names():
 for name, cls in inspect.getmembers(m5.objects, is_mem_class):
     _mem_classes[name] = cls
 
-def create_mem_ctrl(cls, r, i, nbr_mem_ctrls, intlv_bits, intlv_size):
+def create_mem_ctrl(cls, r, i, nbr_mem_ctrls, intlv_bits, intlv_size, replica):
     """
     Helper function for creating a single memoy controller from the given
     options.  This function is invoked multiple times in config_mem function
     to create an array of controllers.
     """
+    # ADARSH create_mem_ctrl creates either replica mem or real mem
+    # the difference is that replica mem has full address range and
+    # not reported in the config table range of the directory (hidden)
 
     import math
     intlv_low_bit = int(math.log(intlv_size, 2))
@@ -133,15 +136,20 @@ def create_mem_ctrl(cls, r, i, nbr_mem_ctrls, intlv_bits, intlv_size):
 
             intlv_low_bit = int(math.log(rowbuffer_size, 2))
 
-    # We got all we need to configure the appropriate address
-    # range
-    ctrl.range = m5.objects.AddrRange(r.start, size = r.size(),
-                                      intlvHighBit = \
-                                          intlv_low_bit + intlv_bits - 1,
-                                      xorHighBit = \
-                                          xor_low_bit + intlv_bits - 1,
-                                      intlvBits = intlv_bits,
-                                      intlvMatch = i)
+    if replica:
+        ctrl.in_addr_map = False
+        ctrl.conf_table_reported = False
+        ctrl.range = m5.objects.AddrRange(r.start, size = r.size())
+    else:
+        # We got all we need to configure the appropriate address
+        # range
+        ctrl.range = m5.objects.AddrRange(r.start, size = r.size(),
+                                        intlvHighBit = \
+                                            intlv_low_bit + intlv_bits - 1,
+                                        xorHighBit = \
+                                            xor_low_bit + intlv_bits - 1,
+                                        intlvBits = intlv_bits,
+                                        intlvMatch = i)
     return ctrl
 
 def config_mem(options, system):
@@ -219,7 +227,7 @@ def config_mem(options, system):
     for r in system.mem_ranges:
         for i in range(nbr_mem_ctrls):
             mem_ctrl = create_mem_ctrl(cls, r, i, nbr_mem_ctrls, intlv_bits,
-                                       intlv_size)
+                                       intlv_size, false)
             # Set the number of ranks based on the command-line
             # options if it was explicitly set
             if issubclass(cls, m5.objects.DRAMCtrl) and opt_mem_ranks:

@@ -137,6 +137,7 @@ class AbstractController : public ClockedObject, public Consumer
                   PortID idx=InvalidPortID);
 
     void queueMemoryRead(const MachineID &id, Addr addr, Cycles latency);
+    void queueMemoryRead(const MachineID &id, Addr addr, Cycles latency, bool isIorS);
     void queueMemoryWrite(const MachineID &id, Addr addr, Cycles latency,
                           const DataBlock &block);
     void queueMemoryWritePartial(const MachineID &id, Addr addr, Cycles latency,
@@ -268,6 +269,10 @@ class AbstractController : public ClockedObject, public Consumer
 
     /* Master port to the memory controller. */
     MemoryPort memoryPort;
+
+    // ADARSH replicaMemoryPort is a master port to the replicaMemory
+    // for simulating bandwidth benefits
+    MemoryPort replicaMemoryPort;
 
     // State that is stored in packets sent to the memory controller.
     struct SenderState : public Packet::SenderState

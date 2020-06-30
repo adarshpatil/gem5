@@ -41,6 +41,7 @@
 #include "mem/ruby/slicc_interface/AbstractController.hh"
 
 #include "debug/RubyQueue.hh"
+#include "debug/RubySlicc.hh"
 #include "mem/protocol/MemoryMsg.hh"
 #include "mem/ruby/network/Network.hh"
 #include "mem/ruby/system/GPUCoalescer.hh"
@@ -58,6 +59,7 @@ AbstractController::AbstractController(const Params *p)
       m_qpi_latency(p->qpi_latency),
       m_mandatory_queue_latency(p->mandatory_queue_latency),
       memoryPort(csprintf("%s.memory", name()), this, ""),
+      replicaMemoryPort(csprintf("%s.replicaMemory", name()), this, ""),
       addrRanges(p->addr_ranges.begin(), p->addr_ranges.end())
 {
     if (m_version == 0) {
@@ -65,6 +67,7 @@ AbstractController::AbstractController(const Params *p)
         // of this particular type.
         Stats::registerDumpCallback(new StatsCallback(this));
     }
+    std::cout << name() << "\n";
 }
 
 void
@@ -234,6 +237,8 @@ AbstractController::isBlocked(Addr addr)
 Port &
 AbstractController::getPort(const std::string &if_name, PortID idx)
 {
+    if(if_name.compare("replicaMemory") == 0)
+        return replicaMemoryPort;
     return memoryPort;
 }
 
@@ -259,6 +264,37 @@ AbstractController::queueMemoryRead(const MachineID &id, Addr addr,
     }
 
     memoryPort.schedTimingReq(pkt, clockEdge(latency));
+}
+
+// ADARSH overloaded function that also knows isIorS so we can
+// scedTimingReq to either memoryPort or replicaMemoryPort
+void
+AbstractController::queueMemoryRead(const MachineID &id, Addr addr,
+                                    Cycles latency, bool isIorS)
+{
+    RequestPtr req = std::make_shared<Request>(
+        addr, RubySystem::getBlockSizeBytes(), 0, m_masterId);
+
+    PacketPtr pkt = Packet::createRead(req);
+    uint8_t *newData = new uint8_t[RubySystem::getBlockSizeBytes()];
+    pkt->dataDynamic(newData);
+
+    SenderState *s = new SenderState(id);
+    pkt->pushSenderState(s);
+
+    // Use functional rather than timing accesses during warmup
+    if (RubySystem::getWarmupEnabled()) {
+        memoryPort.sendFunctional(pkt);
+        recvTimingResp(pkt);
+        return;
+    }
+    DPRINTF(RubySlicc, "AbstractController: Addr %#x, isLocalRequest %d, isIorS %d\n", addr, isLocalRequest(id), isIorS);
+    // ADARSH bandwidth benefit of using replica memory only when
+    // remote request and address is in I or S state at the directory
+    if ((!isLocalRequest(id)) && isIorS)
+        replicaMemoryPort.schedTimingReq(pkt, clockEdge(latency));
+    else
+        memoryPort.schedTimingReq(pkt, clockEdge(latency));
 }
 
 void

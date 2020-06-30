@@ -120,21 +120,29 @@ def setup_memory_controllers(system, ruby, dir_cntrls, options):
             dir_cntrl.memory = crossbar.slave
 
         dir_ranges = []
+        # ADARSH for each dir_cntrl we create a real mem and a replica mem
+        # the dir_cntrl has 2 master ports (memory and replicaMemory)
+        # the binding of ports somehow happens in src/python/m5/params.py:1983
         for r in system.mem_ranges:
             mem_ctrl = MemConfig.create_mem_ctrl(
                 MemConfig.get(options.mem_type), r, index, options.num_dirs,
-                int(math.log(options.num_dirs, 2)), intlv_size)
+                int(math.log(options.num_dirs, 2)), intlv_size, False)
+            replica_mem_ctrl = MemConfig.create_mem_ctrl(
+                MemConfig.get(options.mem_type), r, index, options.num_dirs,
+                int(math.log(options.num_dirs, 2)), intlv_size, True)
 
             if options.access_backing_store:
                 mem_ctrl.kvm_map=False
 
             mem_ctrls.append(mem_ctrl)
+            mem_ctrls.append(replica_mem_ctrl)
             dir_ranges.append(mem_ctrl.range)
 
             if crossbar != None:
                 mem_ctrl.port = crossbar.master
             else:
                 mem_ctrl.port = dir_cntrl.memory
+                replica_mem_ctrl.port = dir_cntrl.replicaMemory
 
             # Enable low-power DRAM states if option is set
             if issubclass(MemConfig.get(options.mem_type), DRAMCtrl):

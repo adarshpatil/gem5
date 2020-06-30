@@ -319,7 +319,13 @@ class $c_ident : public AbstractController
     uint64_t getEventCount(${ident}_Event event);
     bool isPossible(${ident}_State state, ${ident}_Event event);
     uint64_t getTransitionCount(${ident}_State state, ${ident}_Event event);
-
+''')
+    # ADARSH pointer to replica directory controller - see comment on line 565
+        if c_ident == "Directory_Controller":
+            code('''
+    Directory_Controller* m_replica_controller;
+''')
+        code('''
 private:
 ''')
 
@@ -460,6 +466,7 @@ void unset_tbe(${{self.TBEType.c_ident}}*& m_tbe_ptr);
 
 #include "base/compiler.hh"
 #include "mem/ruby/common/BoolVec.hh"
+#include "mem/ruby/common/AddrSet.hh"
 #include "base/cprintf.hh"
 
 ''')
@@ -555,6 +562,18 @@ for (int event = 0; event < ${ident}_Event_NUM; event++) {
     m_event_counters[event] = 0;
 }
 ''')
+# ADARSH initialize the pointer to replica directory controller using ruby_system and replica_version
+# A directory can have pointer to its replica pair - if there were more than 2 directories we can point say 1&2 and 3&4
+# Created so we can allow a request to be satisfied from the replica DRAM (making it look like a local request)
+# and use the bandwidth of the replica DRAM to satisfy the request
+#        if c_ident == "Directory_Controller":
+#             code('''
+# RubySystem *rs = params()->ruby_system;
+# std::map<uint32_t, AbstractController *>::iterator it = rs->m_abstract_controls[MachineType_Directory].find(m_replica_version);
+# std::cout << "m_replica_controller:" << m_replica_controller << std::endl;
+# assert(it != rs->m_abstract_controls[MachineType_Directory].end());
+# assert(m_replica_controller = dynamic_cast<Directory_Controller*>(it->second));
+# ''')
         code.dedent()
         code('''
 }

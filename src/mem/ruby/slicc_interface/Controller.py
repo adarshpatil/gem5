@@ -71,4 +71,6 @@ class RubyController(ClockedObject):
                         "mandatory queue on top-level controllers")
 
     memory = MasterPort("Port for attaching a memory controller")
+    # ADARSH port for attaching replica memory for simulating bandwidth benefits
+    replicaMemory = MasterPort("Port for attaching a replica memory controller")
     system = Param.System(Parent.any, "system object parameter")
