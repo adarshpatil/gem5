@@ -184,6 +184,10 @@ structure (DirectoryMemory, external = "yes") {
   bool isPresent(Addr);
   void invalidateBlock(Addr);
   void recordRequestType(DirectoryRequestType);
+
+  Scalar whitelist_hits;
+  Scalar whitelist_misses;
+  Scalar local_penalty;
 }
 
 structure(AbstractCacheEntry, primitive="yes", external = "yes") {

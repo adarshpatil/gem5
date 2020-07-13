@@ -135,6 +135,7 @@ MakeInclude('structures/Prefetcher.hh')
 MakeInclude('structures/TBETable.hh')
 MakeInclude('structures/TimerTable.hh')
 MakeInclude('structures/WireBuffer.hh')
+MakeInclude('structures/LRUAddrList.hh')
 MakeInclude('system/DMASequencer.hh')
 MakeInclude('system/Sequencer.hh')
 

@@ -109,6 +109,12 @@ machine(MachineType:Directory, "Directory protocol")
 
   // TYPES
 
+  structure (LRUAddrList, external = "yes") {
+    bool lookup(Addr);
+    void insert(Addr);
+    void remove(Addr);
+  }
+
   // DirectoryEntry
   structure(Entry, desc="...", interface='AbstractEntry') {
     State DirectoryState,          desc="Directory state";
@@ -140,6 +146,7 @@ machine(MachineType:Directory, "Directory protocol")
   void unset_tbe();
   bool isLocalRequest(MachineID mid);
   bool isLocalDest(NetDest dest);
+  LRUAddrList whitelist;
 
   Entry getDirectoryEntry(Addr addr), return_by_pointer="yes" {
     Entry dir_entry := static_cast(Entry, "pointer", directory[addr]);
@@ -264,10 +271,20 @@ machine(MachineType:Directory, "Directory protocol")
         DPRINTF(RubySlicc, "ADARSH unblockNetwork_in Address: %#x, qpi_latency %d\n", in_msg.addr, qpi_latency);
         if (in_msg.Type == CoherenceResponseType:UNBLOCK) {
           if( (isLocalRequest(in_msg.Sender) == false) && (in_msg.Seen == false)
-              && (isIorS(in_msg.addr) == false) ) {
+              && ( (isIorS(in_msg.addr) == false)
+              || ((isIorS(in_msg.addr) == true) && (whitelist.lookup(in_msg.addr) == false)) ) ) {
+            // whitelist miss stat
+            if((isIorS(in_msg.addr) == true) && (whitelist.lookup(in_msg.addr) == false)) {
+              ++directory.whitelist_misses;
+            }
             unblockNetwork_in.recycle(clockEdge(), cyclesToTicks(qpi_latency));
             in_msg.Seen := true;
           } else {
+            // whitelist hit stats
+            if((isLocalRequest(in_msg.Sender) == false) && (in_msg.Seen == false)
+               && (isIorS(in_msg.addr) == true) && (whitelist.lookup(in_msg.addr) == true)) {
+              ++directory.whitelist_hits;
+            }
             if (getDirectoryEntry(in_msg.addr).WaitingUnblocks == 1) {
               trigger(Event:Last_Unblock, in_msg.addr,
                       TBEs[in_msg.addr]);
@@ -309,15 +326,25 @@ machine(MachineType:Directory, "Directory protocol")
         // ADARSH - we check if this is from the local L2 or remote L2
         // by comparing machineID num L2_0 <-> D_0 L2_1 <-> D_1
         if (in_msg.Type == CoherenceRequestType:GETS) {
-          DPRINTF(RubySlicc, "ADARSH GETS isLocalRequest %d, Seen %d, isIorS %d\n",
-                  isLocalRequest(in_msg.Requestor), in_msg.Seen, isIorS(in_msg.addr));
+          DPRINTF(RubySlicc, "ADARSH GETS isLocalRequest %d, Seen %d, isIorS %d, whitelist %d\n",
+                  isLocalRequest(in_msg.Requestor), in_msg.Seen, isIorS(in_msg.addr), whitelist.lookup(in_msg.addr));
           // QPI latency only if the the directory entry for addr is NOT in I or S state
           // oracle knows if isIorS so GETS requests can be processed immediately
           if( (isLocalRequest(in_msg.Requestor) == false) && (in_msg.Seen == false)
-              && (isIorS(in_msg.addr) == false) ) {
+              && ( (isIorS(in_msg.addr) == false)
+              || ((isIorS(in_msg.addr) == true) && (whitelist.lookup(in_msg.addr) == false)) ) ) {
+            // whitelist miss stats
+            if((isIorS(in_msg.addr) == true) && (whitelist.lookup(in_msg.addr) == false)) {
+              ++directory.whitelist_misses;
+            }
             requestQueue_in.recycle(clockEdge(), cyclesToTicks(qpi_latency));
             in_msg.Seen := true;
           } else {
+            // whitelist hit stats
+            if((isLocalRequest(in_msg.Requestor) == false) && (in_msg.Seen == false)
+               && (isIorS(in_msg.addr) == true) && (whitelist.lookup(in_msg.addr) == true)) {
+              ++directory.whitelist_hits;
+            }
             trigger(Event:GETS, in_msg.addr, TBEs[in_msg.addr]);
           }
         } else if (in_msg.Type == CoherenceRequestType:GETX) {
@@ -325,6 +352,10 @@ machine(MachineType:Directory, "Directory protocol")
           // can queue fetch request latency in parallel with contact replica (TODO/FIXME)
           if( (isLocalRequest(in_msg.Requestor) == false) && (in_msg.Seen == false) ) {
             requestQueue_in.recycle(clockEdge(), cyclesToTicks(qpi_latency));
+            in_msg.Seen := true;
+          } else if ((isLocalRequest(in_msg.Requestor) == true) && (in_msg.Seen == false)
+                      && (isIorS(in_msg.addr) == true) && (whitelist.lookup(in_msg.addr) == true)) {
+            requestQueue_in.recycle(clockEdge(), cyclesToTicks(qpi_latency+qpi_latency));
             in_msg.Seen := true;
           } else {
             trigger(Event:GETX, in_msg.addr, TBEs[in_msg.addr]);
@@ -408,6 +439,7 @@ machine(MachineType:Directory, "Directory protocol")
       // for requests in the node of the home directory no qpi_latency
       if(isLocalRequest(in_msg.Requestor) == false) {
         delay := qpi_latency;
+        whitelist.remove(address);
       } else {
         delay := to_memory_controller_latency;
       }
@@ -461,18 +493,23 @@ machine(MachineType:Directory, "Directory protocol")
     peek(memQueue_in, MemoryMsg) {
       // ADARSH remote GETS simulating a local read have no QPI latency
       // a local read is possible only if line is in IorS state
-      if( (isLocalRequest(in_msg.OriginalRequestorMachId) == false) && (isIorS(in_msg.addr) == false) ) {
-        delay := qpi_latency;
-      } else if ( (isLocalRequest(in_msg.OriginalRequestorMachId) == false) 
-                && (getDirectoryEntry(in_msg.addr).DirectoryState == State:MM)) {
-        // GETX has to contact replica but for isIorS states mem fetch request can be done in parallel with contact replica
-        // i.e. total delay should be larger(qpi_latency,mem_access_latency)
-        // since mem_access_latency has already elapsed, here delay = if(mem_access_latency > qpi_latency) then 1 else qpi_latency - mem_access_latency
-        // from stats we know avgMemAccLat < qpi_latency - but avgMemAccLat depends on benchmark 
-        // delay = qpi_latency ~= mem_access_latency + delta 
-        // for simplicity we assume delta=100, (qpi_latency - mem_access_latency) = 100 for all benchmarks
-        // FIXME : keep a timer from the time mem access was requested to count time elapsed
-        delay := delta_error_margin;
+      if(isLocalRequest(in_msg.OriginalRequestorMachId) == false) {
+        if((isIorS(in_msg.addr) == true) && (whitelist.lookup(in_msg.addr) == true)){
+          delay := to_memory_controller_latency;
+        }
+        else {
+          delay := qpi_latency;
+          whitelist.insert(in_msg.addr);
+        }
+        if(getDirectoryEntry(in_msg.addr).DirectoryState == State:MM) {
+          if((isIorS(in_msg.addr) == true) && whitelist.lookup(in_msg.addr) == true) {
+            delay := delta_error_margin;
+            whitelist.remove(in_msg.addr);
+          }
+          else {
+            delay := qpi_latency;
+          }
+        }
       } else {
         delay := to_memory_controller_latency;
       }
@@ -626,7 +663,7 @@ machine(MachineType:Directory, "Directory protocol")
 
   action(qf_queueMemoryFetchRequest, "qf", desc="Queue off-chip fetch request") {
     peek(requestQueue_in, RequestMsg) {
-      queueMemoryRead(in_msg.Requestor, address, to_memory_controller_latency, isIorS(address));
+      queueMemoryRead(in_msg.Requestor, address, to_memory_controller_latency, whitelist.lookup(address));
     }
   }
 

@@ -50,6 +50,7 @@
 #include "mem/ruby/slicc_interface/AbstractEntry.hh"
 #include "params/RubyDirectoryMemory.hh"
 #include "sim/sim_object.hh"
+#include "base/statistics.hh"
 
 class DirectoryMemory : public SimObject
 {
@@ -101,6 +102,13 @@ class DirectoryMemory : public SimObject
      * this is all possible memory addresses.
      */
     const AddrRangeList addrRanges;
+  public:
+    Stats::Scalar m_whitelist_hits;
+    Stats::Scalar m_whitelist_misses;
+    Stats::Formula m_whitelist_hitrate;
+    Stats::Scalar m_local_penalty;
+
+    void regStats();
 };
 
 inline std::ostream&

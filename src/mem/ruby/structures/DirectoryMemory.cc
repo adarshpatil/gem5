@@ -151,3 +151,27 @@ RubyDirectoryMemoryParams::create()
 {
     return new DirectoryMemory(this);
 }
+
+void
+DirectoryMemory::regStats()
+{
+    SimObject::regStats();
+
+    m_whitelist_hits
+        .name(name() + ".whitelist_hits")
+        .desc("Number of LRUAddrList hits");
+
+    m_whitelist_misses
+        .name(name() + ".whitelist_misses")
+        .desc("Number of LRUAddrList misses");
+
+    m_whitelist_hitrate
+        .name(name() + ".whitelist_hitrate")
+        .desc("Whitelist hit rate");
+
+    m_whitelist_hitrate = m_whitelist_hits / (m_whitelist_hits+m_whitelist_misses);
+
+    m_local_penalty
+        .name(name() + ".local_penalty")
+        .desc("Number of times 2*qpi_latency for local GETX");
+}
