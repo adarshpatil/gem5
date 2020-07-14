@@ -356,6 +356,7 @@ machine(MachineType:Directory, "Directory protocol")
           } else if ((isLocalRequest(in_msg.Requestor) == true) && (in_msg.Seen == false)
                       && (isIorS(in_msg.addr) == true) && (whitelist.lookup(in_msg.addr) == true)) {
             requestQueue_in.recycle(clockEdge(), cyclesToTicks(qpi_latency+qpi_latency));
+            ++directory.local_penalty;
             in_msg.Seen := true;
           } else {
             trigger(Event:GETX, in_msg.addr, TBEs[in_msg.addr]);
