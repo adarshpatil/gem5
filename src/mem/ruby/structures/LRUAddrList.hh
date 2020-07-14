@@ -81,8 +81,12 @@ class LRUAddrList {
       // should not be present
       // assert(m_map.find(addr) == m_map.end());
       
-      // list is full
-      if (m_list.size() == m_size) {
+      // if present remove it
+      if (m_map.find(addr) != m_map.end()) {
+        m_list.erase(m_map[addr]);
+      }
+      else if (m_list.size() == m_size) {
+          // list is full
           // delete least recently used element
           Addr last = m_list.back();
 
@@ -93,14 +97,18 @@ class LRUAddrList {
           m_map.erase(last);
       }
 
+      // add to list and move to mru
       m_list.push_front(addr);
       m_map[addr] = m_list.begin();
     }
 
     // to remove an element
     void remove(Addr addr) {
-      m_list.erase(m_map[addr]);
-      m_map.erase(addr);
+      // if present
+      if (m_map.find(addr) != m_map.end()) {
+        m_list.erase(m_map[addr]);
+        m_map.erase(addr);
+      }
     }
 
 };
