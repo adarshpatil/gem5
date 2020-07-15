@@ -563,7 +563,7 @@ machine(MachineType:Directory, "Directory protocol")
           ((getDirectoryEntry(in_msg.addr).Sharers.count() > 0) &&
            (getDirectoryEntry(in_msg.addr).Sharers.isElement(in_msg.Requestor) == false))) {
         DPRINTF(RubySlicc, "Address: %#x, Local Sharers: %s, Sharers count: %d\n",
-        // in_msg.addr, getDirectoryEntry(in_msg.addr).Sharers, getDirectoryEntry(in_msg.addr).Sharers.count());
+         in_msg.addr, getDirectoryEntry(in_msg.addr).Sharers, getDirectoryEntry(in_msg.addr).Sharers.count());
         // if(isLocalDest(getDirectoryEntry(in_msg.addr).Sharers) == false) {
         //   delay := qpi_latency;
         // } else {
