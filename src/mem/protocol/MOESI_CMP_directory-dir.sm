@@ -276,15 +276,13 @@ machine(MachineType:Directory, "Directory protocol")
             }
           }
         } else if (in_msg.Type == CoherenceResponseType:UNBLOCK_EXCLUSIVE) {
-          // if( (isLocalRequest(in_msg.Sender) == false) && (in_msg.Seen == false) ) {
-          //   // UNBLOCK_EXCLUSIVE moves to M state which requires replica to be notified
-          //   // hence QPI latency incurred here
-          //   unblockNetwork_in.recycle(clockEdge(), cyclesToTicks(qpi_latency));
-          //   in_msg.Seen := true;
-          // } else {
+          if(in_msg.Seen == false) {
+             unblockNetwork_in.recycle(clockEdge(), cyclesToTicks(qpi_latency));
+             in_msg.Seen := true;
+          } else {
             trigger(Event:Exclusive_Unblock, in_msg.addr,
                     TBEs[in_msg.addr]);
-          // }
+          }
         } else if (in_msg.Type == CoherenceResponseType:DATA_EXCLUSIVE) {
           // ADARSH happens only for DMA
           trigger(Event:Data, in_msg.addr,
