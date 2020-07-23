@@ -84,6 +84,9 @@ def define_options(parser):
     parser.add_option("--mem_replication", action="store_true",
                       help="Replication in DRAM")
 
+    parser.add_option("--qpi_latency", type="int", default=200,
+                      help="QPI latency")
+
     protocol = buildEnv['PROTOCOL']
     exec("from . import %s" % protocol)
     eval("%s.define_options(parser)" % protocol)

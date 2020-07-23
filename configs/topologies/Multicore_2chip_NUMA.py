@@ -28,7 +28,10 @@ class Multicore_2chip_NUMA(SimpleTopology):
         # default values for link latency and router latency.
         # Can be over-ridden on a per link/router basis
         link_latency = options.link_latency # used by simple and garnet
-        qpi_link_latency = 200 # FIXME static qpi latency
+        if options.mem_replication:
+            qpi_link_latency = 1
+        else:
+            qpi_link_latency = options.qpi_latency # FIXME static qpi latency
 
 
         # First determine which nodes are cache cntrls vs. dirs vs. dma
