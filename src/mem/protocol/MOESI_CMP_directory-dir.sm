@@ -157,6 +157,16 @@ machine(MachineType:Directory, "Directory protocol")
     return getDirectoryEntry(addr).DirectoryState;
   }
 
+  bool noRemoteSharer(Addr addr, MachineID requestor_mid) {
+    if ((getDirectoryEntry(addr).Sharers.count() >= 2) ||
+        ((getDirectoryEntry(addr).Sharers.count() == 1) &&
+         getDirectoryEntry(addr).Sharers.isElement(requestor_mid) == false)) {
+      return false;
+    }
+    return true;
+
+  }
+
   void setState(TBE tbe, Addr addr, State state) {
     if (directory.isPresent(addr)) {
 
@@ -317,9 +327,9 @@ machine(MachineType:Directory, "Directory protocol")
             trigger(Event:GETS, in_msg.addr, TBEs[in_msg.addr]);
           }
         } else if (in_msg.Type == CoherenceRequestType:GETX) {
-          // GETX has to contact replica but for oracle knows isIorS and
-          // can queue fetch request latency in parallel with contact replica (TODO/FIXME)
-          if(in_msg.Seen == false) {
+          // oracle blacklist : the transition to M or O does not push entry to other dir
+          // if other socket is sharer invalidate has to be sent
+          if((in_msg.Seen == false) && ((isIorS(in_msg.addr) == false) || (noRemoteSharer(in_msg.addr,in_msg.Requestor) == false)) ) {
             requestQueue_in.recycle(clockEdge(), cyclesToTicks(qpi_latency));
             in_msg.Seen := true;
           } else {
