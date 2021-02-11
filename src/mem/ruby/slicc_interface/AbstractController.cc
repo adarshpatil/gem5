@@ -62,6 +62,7 @@ AbstractController::AbstractController(const Params *p)
       replicaMemoryPort(csprintf("%s.replicaMemory", name()), this, ""),
       addrRanges(p->addr_ranges.begin(), p->addr_ranges.end())
 {
+    replica_access_flag = false;
     if (m_version == 0) {
         // Combine the statistics from all controllers
         // of this particular type.
@@ -290,10 +291,12 @@ AbstractController::queueMemoryRead(const MachineID &id, Addr addr,
     DPRINTF(RubySlicc, "AbstractController: Addr %#x, isLocalRequest %d, isIorS %d\n", addr, isLocalRequest(id), isIorS);
     // ADARSH bandwidth benefit of using replica memory only when
     // remote request and address is in I or S state at the directory
-    if ((!isLocalRequest(id)) && isIorS)
+    // if ((!isLocalRequest(id)) && isIorS)
+    if (replica_access_flag)
         replicaMemoryPort.schedTimingReq(pkt, clockEdge(latency));
     else
         memoryPort.schedTimingReq(pkt, clockEdge(latency));
+    replica_access_flag = !replica_access_flag;
 }
 
 void

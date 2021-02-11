@@ -203,6 +203,10 @@ class AbstractController : public ClockedObject, public Consumer
     // MasterID used by some components of gem5.
     const MasterID m_masterId;
 
+    // ADARSH to split requests 50-50 between mirrored channels
+    // we use a flag and toggle on each access AbstractController.cc:295
+    bool replica_access_flag;
+
     Network *m_net_ptr;
     bool m_is_blocking;
     std::map<Addr, MessageBuffer*> m_block_map;
