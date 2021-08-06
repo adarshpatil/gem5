@@ -1,3 +1,13 @@
+# gem5 + SynchroTrace + Dve
+This repository modifies SynchroTrace gem5 to add Dve replication by implementing
+* memory replication on DRAMs connected to different sockets.
+* modified MOESI_CMP_directory to perform Coherent Replication
+* 2 protocol families to perform Coherent Replication for performance
+* a hypothetical Intel Channel Replication scheduler which provides active replication by load balacing reads between the two channels
+
+See the parent repository [https://github.com/adarshpatil/dve](https://github.com/adarshpatil/dve) and the [ISCA '21 paper](https://www.cs.utah.edu/~rajeev/pubs/isca21.pdf) for more details.
+
+---
 # SYNCHROTRACE
 
 ## What is it?
