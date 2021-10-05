@@ -81,6 +81,9 @@ def define_options(parser):
     parser.add_option("--recycle-latency", type="int", default=10,
                       help="Recycle latency for ruby controller input buffers")
 
+    parser.add_option("--disaggr_mem_link_latency", type="int", default=400,
+                      help="Disaggregate Memory Link Latency")
+
     protocol = buildEnv['PROTOCOL']
     exec("from . import %s" % protocol)
     eval("%s.define_options(parser)" % protocol)

@@ -100,9 +100,11 @@ class Mesh_XY(SimpleTopology):
             link_count += 1
 
         # Connect the remainding nodes to router 0.  These should only be
-        # DMA nodes.
+        # Directory_Controller or L2Cache_Controller nodes; no DMA (sys emulation)
         for (i, node) in enumerate(remainder_nodes):
-            assert(node.type == 'DMA_Controller')
+            #assert(node.type == 'DMA_Controller')
+            if(node.type == 'Directory_Controller'):
+                link_latency = options.disaggr_mem_link_latency
             assert(i < remainder)
             ext_links.append(ExtLink(link_id=link_count, ext_node=node,
                                     int_node=routers[0],

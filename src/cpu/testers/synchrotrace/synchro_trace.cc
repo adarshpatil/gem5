@@ -118,6 +118,10 @@ SynchroTraceReplayer::SynchroTraceReplayer(const Params *p)
 
     inform("warmup ops: %d, detailed ops: %d \n", warmup_ops, detailed_ops);
 
+    // ADARSH skip fast forward if its a single threaded trace; go directly to warmup
+    if(numThreads == 1)
+        in_warmup = true;
+
     // Initialize the ports to the rest of the system
     for (CoreID i = 0; i < numCpus; i++)
         ports.emplace_back(csprintf("%s-port%d", name(), i), *this, i);
@@ -215,7 +219,7 @@ SynchroTraceReplayer::wakeupMonitor()
     uint64_t total_ops = num_iops.value() + num_flops.value() + num_mem.value();
     if (in_warmup && !in_detailed && (total_ops >= warmup_ops))
     {
-        inform("warmup completed after %d ops", total_ops);
+        inform("%d warmup ops completed, switching to detailed", total_ops);
         // dump and reset stats after warmup
         Stats::schedStatEvent(true, true, curTick(), 0);
 
@@ -227,7 +231,7 @@ SynchroTraceReplayer::wakeupMonitor()
         // detailed_ops == 0 means simulate till end of program
         if(detailed_ops != 0 && (total_ops >= detailed_ops))
         {
-            inform("%d detailed ops completed", total_ops);
+            inform("%d detailed ops completed, ending sim", total_ops);
             exitSimLoop("SynchroTrace detailed ops completed");
 
         }

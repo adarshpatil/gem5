@@ -40,7 +40,7 @@
 
 machine(MachineType:Directory, "Directory protocol")
 :  DirectoryMemory * directory;
-   Cycles directory_latency := 6;
+   Cycles directory_latency := 10;
    Cycles to_memory_controller_latency := 1;
 
    // Message Queues
