@@ -185,8 +185,8 @@ main = Environment()
 ## ADARSH Use gcc740 installed localling using gsrc in $AFS_HOME/opt/GNU
 ##print(main['CC'])
 ##print(main['CXX'])
-main.Replace( CC = "gcc740" )
-main.Replace( CXX = "g++740" )
+#main.Replace( CC = "gcc740" )
+#main.Replace( CXX = "g++740" )
 ##print(main['CC'])
 #print(main['CXX'])
 #########################################################################
