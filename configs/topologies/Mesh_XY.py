@@ -91,10 +91,13 @@ class Mesh_XY(SimpleTopology):
 
         # Connect each node to the appropriate router
         ext_links = []
-        for (i, n) in enumerate(network_nodes):
+        for (i, node) in enumerate(network_nodes):
             cntrl_level, router_id = divmod(i, num_routers)
             assert(cntrl_level < cntrls_per_router)
-            ext_links.append(ExtLink(link_id=link_count, ext_node=n,
+            if(node.type == 'Directory_Controller'):
+                link_latency = options.disaggr_mem_link_latency
+                print ("Directory_Controller connected via ext_link " + str(link_count))
+            ext_links.append(ExtLink(link_id=link_count, ext_node=node,
                                     int_node=routers[router_id],
                                     latency = link_latency))
             link_count += 1
@@ -105,6 +108,7 @@ class Mesh_XY(SimpleTopology):
             #assert(node.type == 'DMA_Controller')
             if(node.type == 'Directory_Controller'):
                 link_latency = options.disaggr_mem_link_latency
+                print ("Directory_Controller connected via ext_link " + str(link_count))
             assert(i < remainder)
             ext_links.append(ExtLink(link_id=link_count, ext_node=node,
                                     int_node=routers[0],
