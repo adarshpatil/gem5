@@ -188,6 +188,8 @@ struct InsnMarker {
     uint64_t insns;
 };
 
+struct EodMarker {
+};
 
 /**
  * The original event id in the trace file.
@@ -224,6 +226,8 @@ struct StEvent {
         INSN_MARKER,   // Marks a specific number of machine instructions
                        // passed in the trace.
 
+        EOD_MARKER,   // end of disaggr mem
+
         TRACE_EVENT_MARKER,  // New event in trace.
 
         END_OF_EVENTS  // The last event in the event stream.
@@ -247,6 +251,9 @@ struct StEvent {
     using InsnMarkerTagType = std::integral_constant<Tag, Tag::INSN_MARKER>;
     static constexpr auto InsnMarkerTag = InsnMarkerTagType{};
 
+    using EodMarkerTagType = std::integral_constant<Tag, Tag::EOD_MARKER>;
+    static constexpr auto EodMarkerTag = EodMarkerTagType{};
+
     using TraceEventMarkerTagType =
         std::integral_constant<Tag, Tag::TRACE_EVENT_MARKER>;
     static constexpr auto TraceEventMarkerTag = TraceEventMarkerTagType{};
@@ -269,6 +276,7 @@ struct StEvent {
         MemoryRequest_ThreadCommunication memoryReqComm;
         ThreadApi                         threadApi;
         InsnMarker                        insnMarker;
+        EodMarker                         eodMarker;
         TraceEventMarker                  traceEventMarker;
         End                               end;
     };
@@ -313,6 +321,11 @@ struct StEvent {
             uint64_t insns) noexcept
       : insnMarker{insns},
         tag{Tag::INSN_MARKER}
+    {}
+
+    StEvent(EodMarkerTagType) noexcept
+      : eodMarker{},
+        tag{Tag::EOD_MARKER}
     {}
 
     StEvent(TraceEventMarkerTagType,

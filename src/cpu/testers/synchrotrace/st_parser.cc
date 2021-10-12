@@ -69,6 +69,7 @@ constexpr StEvent::MemoryTagType StEvent::MemoryTag;
 constexpr StEvent::MemoryCommTagType StEvent::MemoryCommTag;
 constexpr StEvent::ThreadApiTagType StEvent::ThreadApiTag;
 constexpr StEvent::InsnMarkerTagType StEvent::InsnMarkerTag;
+constexpr StEvent::EodMarkerTagType StEvent::EodMarkerTag;
 constexpr StEvent::TraceEventMarkerTagType StEvent::TraceEventMarkerTag;
 constexpr StEvent::EndTagType StEvent::EndTag;
 
@@ -179,6 +180,9 @@ StTraceParser::parseTo(std::vector<StEvent>& buffer,
         break;
     case MARKER_EVENT_TOKEN:
         parseMarkerEventTo(buffer, line, threadId, eventId);
+        break;
+    case EOD_EVENT_TOKEN:
+        parseEodEventTo(buffer, line, threadId, eventId);
         break;
     default:
         fatal("Invalid line detected in thread: %d\n", threadId);
@@ -440,6 +444,23 @@ StTraceParser::parseMarkerEventTo(std::vector<StEvent>& buffer,
     auto res = scn::scan(s, "! {:d}", insns);
     fatal_if(!res, "error parsing instruction marker event");
     buffer.emplace_back(StEvent::InsnMarkerTag, insns);
+}
+
+void
+StTraceParser::parseEodEventTo(std::vector<StEvent>& buffer,
+                                  std::string& line,
+                                  ThreadID threadId,
+                                  StEventID eventId)
+{
+    // example line:
+    //
+    // &
+
+    // auto s = scn::make_stream(line);
+    // auto res = scn::scan(s, "&");
+    // fatal_if(!res, "error parsing eod marker event");
+    inform("Reached End of disaggr marker\n");
+    buffer.emplace_back(StEvent::EodMarkerTag);
 }
 
 

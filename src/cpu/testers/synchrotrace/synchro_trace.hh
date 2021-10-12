@@ -379,6 +379,7 @@ class SynchroTraceReplayer : public MemObject
      */
     void processEventMarker(ThreadContext& tcxt, CoreID coreId);
     void processInsnMarker(ThreadContext& tcxt, CoreID coreId);
+    void processEodMarker(ThreadContext& txt, CoreID coreId);
     void processEndMarker(ThreadContext& tcxt, CoreID coreId);
 
     /** Send a blocking message request to memory system. */

@@ -333,6 +333,9 @@ SynchroTraceReplayer::wakeupCore(CoreID coreId)
     case StEvent::Tag::INSN_MARKER:
         processInsnMarker(tcxt, coreId);
         break;
+    case StEvent::Tag::EOD_MARKER:
+        processEodMarker(tcxt, coreId);
+        break;
     case StEvent::Tag::END_OF_EVENTS:
         processEndMarker(tcxt, coreId);
         break;
@@ -837,6 +840,15 @@ SynchroTraceReplayer::processInsnMarker(ThreadContext& tcxt, CoreID coreId)
     // TODO(soonish) track stats
     num_inst += 4096;
     schedule(coreEvents[coreId], curTick());
+    tcxt.evStream.pop();
+}
+
+void
+SynchroTraceReplayer::processEodMarker(ThreadContext& tcxt, CoreID coreId)
+{
+    // ADARSH process eod marker changes memory link latency
+    // from disaggr_mem_link_latency to 1
+    DPRINTF(STEventPrint, "Found EOD MARKER\n");
     tcxt.evStream.pop();
 }
 

@@ -84,6 +84,7 @@ class StTraceParser
     static constexpr char MARKER_EVENT_TOKEN = '!';
     static constexpr char WRITE_ADDR_DELIM = '$';
     static constexpr char READ_ADDR_DELIM = '*';
+    static constexpr char EOD_EVENT_TOKEN = '&';
 
     /** System config for parsing event data */
     const uint32_t m_bytesPerCacheBlock;
@@ -134,7 +135,10 @@ class StTraceParser
                             std::string& line,
                             ThreadID threadId,
                             StEventID eventId);
-
+    void parseEodEventTo(std::vector<StEvent>& buffer,
+                            std::string& line,
+                            ThreadID threadId,
+                            StEventID eventId);
     template<typename F>
     void foreach_MemAddrChunk(uintptr_t startAddr, uintptr_t endAddr, F f);
 };
