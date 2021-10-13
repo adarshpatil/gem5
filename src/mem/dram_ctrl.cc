@@ -61,6 +61,7 @@ using namespace Data;
 
 DRAMCtrl::DRAMCtrl(const DRAMCtrlParams* p) :
     QoS::MemCtrl(p),
+    disaggrMemLatency(0),
     port(name() + ".port", *this), isTimingMode(false),
     retryRdReq(false), retryWrReq(false),
     nextReqEvent([this]{ processNextReqEvent(); }, name()),
@@ -1299,6 +1300,11 @@ DRAMCtrl::doDRAMAccess(DRAMPacket* dram_pkt)
     // request to not introduce any unecessary bubbles. In most cases
     // we will wake up sooner than we have to.
     nextReqTime = nextBurstAt - (tRP + tRCD);
+
+    // ADARSH we are adding disaggr mem latency to readyTime
+    // this delays the time the packet is ready to leave ctrl
+    // Thus simulates a slow memory controller
+    dram_pkt->readyTime = dram_pkt->readyTime + getDisaggrMemLatency();
 
     // Update the stats and schedule the next request
     if (dram_pkt->isRead()) {

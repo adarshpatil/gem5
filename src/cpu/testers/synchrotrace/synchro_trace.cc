@@ -848,7 +848,9 @@ SynchroTraceReplayer::processEodMarker(ThreadContext& tcxt, CoreID coreId)
 {
     // ADARSH process eod marker changes memory link latency
     // from disaggr_mem_link_latency to 1
-    DPRINTF(STEventPrint, "Found EOD MARKER\n");
+    inform("Reached EOD marker, dumping stats\n");
+    Stats::schedStatEvent(true, false, curTick(), 0);
+    schedule(coreEvents[coreId], curTick());
     tcxt.evStream.pop();
 }
 

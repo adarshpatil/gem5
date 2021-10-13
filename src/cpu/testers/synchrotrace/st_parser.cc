@@ -459,7 +459,7 @@ StTraceParser::parseEodEventTo(std::vector<StEvent>& buffer,
     // auto s = scn::make_stream(line);
     // auto res = scn::scan(s, "&");
     // fatal_if(!res, "error parsing eod marker event");
-    inform("Reached End of disaggr marker\n");
+    DPRINTF(STDebug,"parsing eod marker\n");
     buffer.emplace_back(StEvent::EodMarkerTag);
 }
 

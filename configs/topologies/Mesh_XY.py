@@ -94,9 +94,13 @@ class Mesh_XY(SimpleTopology):
         for (i, node) in enumerate(network_nodes):
             cntrl_level, router_id = divmod(i, num_routers)
             assert(cntrl_level < cntrls_per_router)
-            if(node.type == 'Directory_Controller'):
-                link_latency = options.disaggr_mem_link_latency
-                print ("Directory_Controller connected via ext_link " + str(link_count))
+            # ADARSH we had originally intended to set disaggr mem latency in nw
+            # i.e. ext link between router and memory ctrl
+            # This proved hard to change at runtime (eod marker) due to routing table computation
+            # This latency is now accounted for in the memory controller
+            # if(node.type == 'Directory_Controller'):
+            #     link_latency = options.disaggr_mem_link_latency
+            #     print ("Directory_Controller connected via ext_link " + str(link_count))
             ext_links.append(ExtLink(link_id=link_count, ext_node=node,
                                     int_node=routers[router_id],
                                     latency = link_latency))
@@ -106,9 +110,10 @@ class Mesh_XY(SimpleTopology):
         # Directory_Controller or L2Cache_Controller nodes; no DMA (sys emulation)
         for (i, node) in enumerate(remainder_nodes):
             #assert(node.type == 'DMA_Controller')
-            if(node.type == 'Directory_Controller'):
-                link_latency = options.disaggr_mem_link_latency
-                print ("Directory_Controller connected via ext_link " + str(link_count))
+            # ADARSH see note above
+            # if(node.type == 'Directory_Controller'):
+                # link_latency = options.disaggr_mem_link_latency
+                # print ("Directory_Controller connected via ext_link " + str(link_count))
             assert(i < remainder)
             ext_links.append(ExtLink(link_id=link_count, ext_node=node,
                                     int_node=routers[0],
