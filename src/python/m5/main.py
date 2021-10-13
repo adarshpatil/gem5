@@ -45,6 +45,7 @@ import datetime
 import os
 import socket
 import sys
+import subprocess
 
 __all__ = [ 'options', 'arguments', 'main' ]
 
@@ -200,6 +201,18 @@ def _check_tracing():
 
     fatal("Tracing is not enabled.  Compile with TRACING_ON")
 
+def get_git_commit_id():
+    try:
+        return subprocess.check_output(['git', 'rev-parse', 'HEAD']).decode('ascii').strip()
+    except:
+        return ("Not invoked from gem5 dir")
+
+def get_git_branch():
+    try:
+        return subprocess.check_output(['git', 'rev-parse', '--abbrev-ref', 'HEAD']).decode('ascii').strip()
+    except:
+        return ("Not invoked from gem5 dir")
+
 def main(*args):
     import m5
 
@@ -320,6 +333,7 @@ def main(*args):
         print()
 
         print("gem5 compiled %s" % defines.compileDate)
+        print("commit ID: %s, branch name: %s" % (get_git_commit_id(), get_git_branch()))
 
         print("gem5 started %s" %
               datetime.datetime.now().strftime("%b %e %Y %X"))
