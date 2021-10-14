@@ -55,6 +55,7 @@ bool RubySystem::m_warmup_enabled = false;
 // of RubySystems that need to be warmed up on checkpoint restore.
 unsigned RubySystem::m_systems_to_warmup = 0;
 bool RubySystem::m_cooldown_enabled = false;
+uint32_t RubySystem::disaggrMemLatency;
 
 RubySystem::RubySystem(const Params *p)
     : ClockedObject(p), m_access_backing_store(p->access_backing_store),
@@ -66,6 +67,7 @@ RubySystem::RubySystem(const Params *p)
     assert(isPowerOf2(m_block_size_bytes));
     m_block_size_bits = floorLog2(m_block_size_bytes);
     m_memory_size_bits = p->memory_size_bits;
+    disaggrMemLatency = p->disaggr_mem_latency;
 
     // Resize to the size of different machine types
     m_abstract_controls.resize(MachineType_NUM);

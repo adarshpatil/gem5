@@ -62,6 +62,10 @@ class RubySystem : public ClockedObject
     static bool getWarmupEnabled() { return m_warmup_enabled; }
     static bool getCooldownEnabled() { return m_cooldown_enabled; }
 
+    // ADARSH
+    static uint32_t getDisaggrMemLatency() { return disaggrMemLatency; }
+    static void setDisaggrMemLatency(uint32_t latency) { disaggrMemLatency = latency; }
+
     SimpleMemory *getPhysMem() { return m_phys_mem; }
     Cycles getStartCycle() { return m_start_cycle; }
     bool getAccessBackingStore() { return m_access_backing_store; }
@@ -127,6 +131,10 @@ class RubySystem : public ClockedObject
     static bool m_warmup_enabled;
     static unsigned m_systems_to_warmup;
     static bool m_cooldown_enabled;
+
+    // ADARSH
+    static uint32_t disaggrMemLatency;
+
     SimpleMemory *m_phys_mem;
     const bool m_access_backing_store;
 

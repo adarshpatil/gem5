@@ -40,6 +40,8 @@ class RubySystem(ClockedObject):
          buffer set its own flag to enable/disable randomization)");
     block_size_bytes = Param.UInt32(64,
         "default cache block size; must be a power of two");
+    disaggr_mem_latency = Param.UInt32(0,
+        "default disaggr mem link latency");
     memory_size_bits = Param.UInt32(64,
         "number of bits that a memory address requires");
 

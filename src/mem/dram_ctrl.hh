@@ -99,9 +99,6 @@ class DRAMCtrl : public QoS::MemCtrl
 {
 
   private:
-
-    Tick disaggrMemLatency;
-
     // For now, make use of a queued slave port to avoid dealing with
     // flow control for the responses being sent back
     class MemoryPort : public QueuedSlavePort
@@ -1187,10 +1184,6 @@ class DRAMCtrl : public QoS::MemCtrl
     virtual void init() override;
     virtual void startup() override;
     virtual void drainResume() override;
-
-    void setDisaggrMemLatency(Tick latency) { disaggrMemLatency = latency; }
-
-    Tick getDisaggrMemLatency() { return disaggrMemLatency; }
 
     /**
      * Return true once refresh is complete for all ranks and there are no

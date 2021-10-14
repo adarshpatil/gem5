@@ -56,12 +56,13 @@
 #include "debug/QOS.hh"
 #include "sim/system.hh"
 
+#include "mem/ruby/system/RubySystem.hh"
+
 using namespace std;
 using namespace Data;
 
 DRAMCtrl::DRAMCtrl(const DRAMCtrlParams* p) :
     QoS::MemCtrl(p),
-    disaggrMemLatency(0),
     port(name() + ".port", *this), isTimingMode(false),
     retryRdReq(false), retryWrReq(false),
     nextReqEvent([this]{ processNextReqEvent(); }, name()),
@@ -1304,7 +1305,8 @@ DRAMCtrl::doDRAMAccess(DRAMPacket* dram_pkt)
     // ADARSH we are adding disaggr mem latency to readyTime
     // this delays the time the packet is ready to leave ctrl
     // Thus simulates a slow memory controller
-    dram_pkt->readyTime = dram_pkt->readyTime + getDisaggrMemLatency();
+    dram_pkt->readyTime = dram_pkt->readyTime + RubySystem::getDisaggrMemLatency();
+    DPRINTF(DRAM,"readyTime delayed by disaggr mem latency %d\n", RubySystem::getDisaggrMemLatency());
 
     // Update the stats and schedule the next request
     if (dram_pkt->isRead()) {

@@ -851,6 +851,8 @@ SynchroTraceReplayer::processEodMarker(ThreadContext& tcxt, CoreID coreId)
     inform("Reached EOD marker, dumping stats\n");
     Stats::schedStatEvent(true, false, curTick(), 0);
     schedule(coreEvents[coreId], curTick());
+    inform("disaggr mem latency was %d, now %d\n", RubySystem::getDisaggrMemLatency(), 0);
+    RubySystem::setDisaggrMemLatency(0);
     tcxt.evStream.pop();
 }
 

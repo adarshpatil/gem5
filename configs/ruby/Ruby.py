@@ -82,7 +82,7 @@ def define_options(parser):
                       help="Recycle latency for ruby controller input buffers")
 
     # default latency 800 cycles (800 Ruby Cycles = 400ns)
-    parser.add_option("--disaggr_mem_link_latency", type="int", default=800,
+    parser.add_option("--disaggr_mem_link_latency", type="int", default=0,
                       help="Disaggregate Memory Link Latency")
 
     protocol = buildEnv['PROTOCOL']
@@ -93,6 +93,9 @@ def define_options(parser):
 def setup_memory_controllers(system, ruby, dir_cntrls, options):
     ruby.block_size_bytes = options.cacheline_size
     ruby.memory_size_bits = 48
+
+    ruby.disaggr_mem_latency = options.disaggr_mem_link_latency
+    print("setting disaggr_mem_latency to %d" % ruby.disaggr_mem_latency)
 
     index = 0
     mem_ctrls = []
