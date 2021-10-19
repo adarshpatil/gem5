@@ -67,7 +67,8 @@ RubySystem::RubySystem(const Params *p)
     assert(isPowerOf2(m_block_size_bytes));
     m_block_size_bits = floorLog2(m_block_size_bytes);
     m_memory_size_bits = p->memory_size_bits;
-    disaggrMemLatency = p->disaggr_mem_latency;
+    // Don't set this to 0 because dir.sm will break on recycle request
+    disaggrMemLatency = (p->disaggr_mem_latency==0)?1:p->disaggr_mem_latency;
     inform("setting disaggr_mem_latency %d ticks\n", disaggrMemLatency);
 
     // Resize to the size of different machine types
