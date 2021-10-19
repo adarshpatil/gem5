@@ -366,8 +366,10 @@ set${{dm.ident}}(const ${{dm.type.c_ident}}& local_${{dm.ident}})
 
                 if "desc" in dm:
                     code('/** ${{dm["desc"]}} */')
-
-                code('$const${{dm.type.c_ident}} m_${{dm.ident}}$init;')
+                if dm.ident == "Seen":
+                    code('mutable $const${{dm.type.c_ident}} m_${{dm.ident}}$init;')
+                else:
+                    code('$const${{dm.type.c_ident}} m_${{dm.ident}}$init;')
 
         # Prototypes for methods defined for the Type
         for item in self.methods:

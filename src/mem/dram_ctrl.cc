@@ -1305,8 +1305,11 @@ DRAMCtrl::doDRAMAccess(DRAMPacket* dram_pkt)
     // ADARSH we are adding disaggr mem latency to readyTime
     // this delays the time the packet is ready to leave ctrl
     // Thus simulates a slow memory controller
-    dram_pkt->readyTime = dram_pkt->readyTime + RubySystem::getDisaggrMemLatency();
-    DPRINTF(DRAM,"readyTime delayed by disaggr mem latency %d\n", RubySystem::getDisaggrMemLatency());
+    // This approach did not work - refresh assert failing because of high latency
+    // We decided that right place to add disaggrMemLatency is at dir.sm
+    // because directory is also on the disaggr mem node
+    // dram_pkt->readyTime = dram_pkt->readyTime + RubySystem::getDisaggrMemLatency();
+    // DPRINTF(DRAM,"readyTime delayed by disaggr mem latency %d\n", RubySystem::getDisaggrMemLatency());
 
     // Update the stats and schedule the next request
     if (dram_pkt->isRead()) {

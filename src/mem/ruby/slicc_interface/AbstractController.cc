@@ -236,6 +236,12 @@ AbstractController::getPort(const std::string &if_name, PortID idx)
     return memoryPort;
 }
 
+Tick
+AbstractController::getDisaggrMemLatency()
+{
+    return RubySystem::getDisaggrMemLatency();
+}
+
 void
 AbstractController::queueMemoryRead(const MachineID &id, Addr addr,
                                     Cycles latency)
