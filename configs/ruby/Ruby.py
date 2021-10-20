@@ -240,6 +240,7 @@ def create_directories(options, bootmem, ruby_system, system):
         dir_cntrl.version = i
         dir_cntrl.directory = RubyDirectoryMemory()
         dir_cntrl.ruby_system = ruby_system
+        dir_cntrl.number_of_TBEs = 4096
 
         exec("ruby_system.dir_cntrl%d = dir_cntrl" % i)
         dir_cntrl_nodes.append(dir_cntrl)

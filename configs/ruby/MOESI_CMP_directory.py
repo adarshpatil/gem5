@@ -129,6 +129,7 @@ def create_system(options, full_system, system, dma_ports, bootmem,
                                         L1Icache=l1i_cache,
                                         L1Dcache=l1d_cache,
                                         send_evictions=send_evicts(options),
+                                        number_of_TBEs = 4096,
                                         transitions_per_cycle=options.ports,
                                         clk_domain=clk_domain,
                                         #l2_select_num_bits = l2_bits,
@@ -188,6 +189,7 @@ def create_system(options, full_system, system, dma_ports, bootmem,
 
             l2_cntrl = L2Cache_Controller(version = (i * num_l2caches_per_cluster + j),
                                         L2cache = l2_cache, cluster_id = i,
+                                        number_of_TBEs = 4096,
                                         transitions_per_cycle = options.ports,
                                         ruby_system = ruby_system)
                                         #addr_ranges = l2_addr_ranges[i])
