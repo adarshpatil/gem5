@@ -105,6 +105,8 @@ machine(MachineType:Directory, "Directory protocol")
   }
 
   // TYPES
+  // tracks the cache lines which requested GETX (to write) in PUT phase
+  // clear at the end of the PUT
   structure(AddrSet, external="yes") {
     void insert(Addr);
     int count(Addr);
@@ -292,6 +294,7 @@ machine(MachineType:Directory, "Directory protocol")
           if (in_msg.Type == CoherenceRequestType:GETS) {
             trigger(Event:GETS, in_msg.addr, TBEs[in_msg.addr]);
           } else if (in_msg.Type == CoherenceRequestType:GETX) {
+            // add to putAddr only if faasstatus is PUT
             putAddr.insert(in_msg.addr);
             DPRINTF(RubySlicc,"%d added to putAddr %d\n", in_msg.addr, putAddr.count(in_msg.addr));
             trigger(Event:GETX, in_msg.addr, TBEs[in_msg.addr]);

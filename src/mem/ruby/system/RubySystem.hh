@@ -63,8 +63,18 @@ class RubySystem : public ClockedObject
     static bool getCooldownEnabled() { return m_cooldown_enabled; }
 
     // ADARSH
-    static Tick getDisaggrMemLatency() { return disaggrMemLatency; }
-    static void setDisaggrMemLatency(Tick latency) { disaggrMemLatency = latency; }
+    static Tick getDisaggrMemLatency() { return curDisaggrMemLatency; }
+    // sets curDisaggrMemLatency  
+    // if passed 1, it sets latency to realDisaggrMemLatency; if passed 0, it sets 1 (for local mem)
+    static void setDisaggrMemLatency(bool l) {
+      if(l)
+        curDisaggrMemLatency = realDisaggrMemLatency;
+      else
+        curDisaggrMemLatency = 1;
+    }
+
+    static void setPut(bool p) { faasput = p; }
+    static bool isPut() { return faasput; }
 
     SimpleMemory *getPhysMem() { return m_phys_mem; }
     Cycles getStartCycle() { return m_start_cycle; }
@@ -133,7 +143,10 @@ class RubySystem : public ClockedObject
     static bool m_cooldown_enabled;
 
     // ADARSH
-    static Tick disaggrMemLatency;
+    static Tick curDisaggrMemLatency;
+    static Tick realDisaggrMemLatency;
+
+    static bool faasput;
 
     SimpleMemory *m_phys_mem;
     const bool m_access_backing_store;

@@ -55,7 +55,9 @@ bool RubySystem::m_warmup_enabled = false;
 // of RubySystems that need to be warmed up on checkpoint restore.
 unsigned RubySystem::m_systems_to_warmup = 0;
 bool RubySystem::m_cooldown_enabled = false;
-Tick RubySystem::disaggrMemLatency;
+Tick RubySystem::curDisaggrMemLatency;
+Tick RubySystem::realDisaggrMemLatency;
+bool RubySystem::faasput;
 
 RubySystem::RubySystem(const Params *p)
     : ClockedObject(p), m_access_backing_store(p->access_backing_store),
@@ -67,9 +69,13 @@ RubySystem::RubySystem(const Params *p)
     assert(isPowerOf2(m_block_size_bytes));
     m_block_size_bits = floorLog2(m_block_size_bytes);
     m_memory_size_bits = p->memory_size_bits;
-    // Don't set this to 0 because dir.sm will break on recycle request
-    disaggrMemLatency = (p->disaggr_mem_latency==0)?1:p->disaggr_mem_latency;
-    inform("setting disaggr_mem_latency %d ticks\n", disaggrMemLatency);
+    // Don't set curDisaggrMemLatency this to 0 because dir.sm will break on recycle request
+    assert(p->disaggr_mem_latency!= 0);
+    realDisaggrMemLatency = p->disaggr_mem_latency;
+    // we assume execution starts with a get; so curDMLat = realDMLat
+    curDisaggrMemLatency = p->disaggr_mem_latency;
+    faasput = false;
+    inform("setting disaggr_mem_latency %d ticks\n", curDisaggrMemLatency);
 
     // Resize to the size of different machine types
     m_abstract_controls.resize(MachineType_NUM);

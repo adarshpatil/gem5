@@ -242,6 +242,12 @@ AbstractController::getDisaggrMemLatency()
     return RubySystem::getDisaggrMemLatency();
 }
 
+bool
+AbstractController::isPut()
+{
+    return RubySystem::isPut();
+}
+
 void
 AbstractController::queueMemoryRead(const MachineID &id, Addr addr,
                                     Cycles latency)

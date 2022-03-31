@@ -138,6 +138,8 @@ class AbstractController : public ClockedObject, public Consumer
 
     // ADARSH shim function to call RubySystem::getDisaggrMemLatency
     Tick getDisaggrMemLatency();
+    // ADARSH shim function to call RubySystem::isPut()
+    bool isPut();
     void queueMemoryRead(const MachineID &id, Addr addr, Cycles latency);
     void queueMemoryWrite(const MachineID &id, Addr addr, Cycles latency,
                           const DataBlock &block);
