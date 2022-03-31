@@ -105,6 +105,11 @@ machine(MachineType:Directory, "Directory protocol")
   }
 
   // TYPES
+  structure(AddrSet, external="yes") {
+    void insert(Addr);
+    int count(Addr);
+    void erase(Addr);
+  }
 
   // DirectoryEntry
   structure(Entry, desc="...", interface='AbstractEntry') {
@@ -136,6 +141,7 @@ machine(MachineType:Directory, "Directory protocol")
   Cycles ticksToCycles(Tick t);
   void set_tbe(TBE b);
   void unset_tbe();
+  AddrSet putAddr;
 
   Entry getDirectoryEntry(Addr addr), return_by_pointer="yes" {
     Entry dir_entry := static_cast(Entry, "pointer", directory[addr]);
@@ -286,6 +292,8 @@ machine(MachineType:Directory, "Directory protocol")
           if (in_msg.Type == CoherenceRequestType:GETS) {
             trigger(Event:GETS, in_msg.addr, TBEs[in_msg.addr]);
           } else if (in_msg.Type == CoherenceRequestType:GETX) {
+            putAddr.insert(in_msg.addr);
+            DPRINTF(RubySlicc,"%d added to putAddr %d\n", in_msg.addr, putAddr.count(in_msg.addr));
             trigger(Event:GETX, in_msg.addr, TBEs[in_msg.addr]);
           } else if (in_msg.Type == CoherenceRequestType:PUTX) {
             trigger(Event:PUTX, in_msg.addr, TBEs[in_msg.addr]);

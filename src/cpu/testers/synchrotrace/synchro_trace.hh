@@ -211,6 +211,27 @@ class SynchroTraceReplayer : public MemObject
         }
     };
 
+    enum class FaaSStatus {
+      GET,
+      COMPUTE,
+      PUT
+    };
+
+    const char* toString(FaaSStatus status) const
+    {
+      switch(status) {
+        case FaaSStatus::GET:
+          return "GET";
+        case FaaSStatus::COMPUTE:
+          return "COMPUTE";
+        case FaaSStatus::PUT:
+          return "PUT";
+        default:
+          panic("Unexpected FaaS Status");
+      }
+    }
+
+
     // XXX: DO NOT CHANGE THE ORDER OF THESE STATUSES
     enum class ThreadStatus {
         INACTIVE,
@@ -327,6 +348,7 @@ class SynchroTraceReplayer : public MemObject
         StEventID currEventId;
         StEventStream evStream;
         ThreadStatus status;
+        FaaSStatus faasstatus;
 
         ThreadContext(ThreadID threadId,
                       const std::string& eventDir,
@@ -338,7 +360,8 @@ class SynchroTraceReplayer : public MemObject
                      eventDir,
                      blockSizeBytes,
                      memSizeBytes},
-            status{ThreadStatus::INACTIVE}
+            status{ThreadStatus::INACTIVE},
+            faasstatus{FaaSStatus::GET}
         {}
 
         // Note that a 'running' thread may be:

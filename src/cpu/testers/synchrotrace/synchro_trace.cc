@@ -849,9 +849,19 @@ SynchroTraceReplayer::processEodMarker(ThreadContext& tcxt, CoreID coreId)
     // ADARSH process eod marker changes memory link latency
     // from disaggr_mem_link_latency to 1
     inform("Reached EOD marker, dumping stats\n");
+    inform("current FaaS status %s ", toString(tcxt.faasstatus));
     Stats::schedStatEvent(true, false, curTick(), 0);
     schedule(coreEvents[coreId], curTick());
-    inform("disaggr mem latency was %d, now %d\n", RubySystem::getDisaggrMemLatency(), 1);
+    if(tcxt.faasstatus == FaaSStatus::GET)
+        tcxt.faasstatus = FaaSStatus::COMPUTE;
+    else if(tcxt.faasstatus == FaaSStatus::COMPUTE)
+        tcxt.faasstatus  = FaaSStatus::PUT;
+    else if(tcxt.faasstatus == FaaSStatus::PUT) {
+        tcxt.faasstatus  = FaaSStatus::GET;
+        inform("func complete, starting next func\n");
+    }
+    inform("new FaaS status %s\n", toString(tcxt.faasstatus));
+    // inform("disaggr mem latency was %d, now %d\n", RubySystem::getDisaggrMemLatency(), 1);
     RubySystem::setDisaggrMemLatency(1);
     tcxt.evStream.pop();
 }

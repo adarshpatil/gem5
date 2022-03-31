@@ -460,6 +460,7 @@ void unset_tbe(${{self.TBEType.c_ident}}*& m_tbe_ptr);
 
 #include "base/compiler.hh"
 #include "mem/ruby/common/BoolVec.hh"
+#include "mem/ruby/common/AddrSet.hh"
 #include "base/cprintf.hh"
 
 ''')
