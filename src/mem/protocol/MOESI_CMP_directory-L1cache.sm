@@ -121,6 +121,13 @@ machine(MachineType:L1Cache, "L1 cache protocol")
   }
 
   // TYPES
+  // tracks the cache lines which were stored in the PUT phase
+  // clear set at the end of the PUT
+  structure(AddrSet, external="yes") {
+    void insert(Addr);
+    int count(Addr);
+    void erase(Addr);
+  }
 
   // CacheEntry
   structure(Entry, desc="...", interface="AbstractCacheEntry") {
@@ -155,6 +162,8 @@ machine(MachineType:L1Cache, "L1 cache protocol")
 
   TBETable TBEs, template="<L1Cache_TBE>", constructor="m_number_of_TBEs";
   TimerTable useTimerTable;
+
+  AddrSet putAddr;
 
   Entry getCacheEntry(Addr addr), return_by_pointer="yes" {
     Entry L1Dcache_entry := static_cast(Entry, "pointer", L1Dcache.lookup(addr));
@@ -397,6 +406,12 @@ machine(MachineType:L1Cache, "L1 cache protocol")
                     in_msg.LineAddress, L1Icache_entry,
                     TBEs[in_msg.LineAddress]);
           } else {
+            if (mandatory_request_type_to_event(in_msg.Type) == Event:Store) {
+              if (isPut()) {
+                putAddr.insert(in_msg.LineAddress);
+                DPRINTF(RubySlicc,"%d added to putAddr %d\n", in_msg.LineAddress, putAddr.count(in_msg.LineAddress));
+              }
+            }
 
             Entry L1Dcache_entry := getL1DCacheEntry(in_msg.LineAddress);
             // Check to see if it is in the OTHER L1

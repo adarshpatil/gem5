@@ -36,6 +36,7 @@ Cycles recycle_latency;
 // making timing access to the memory maintained by the
 // memory controllers.
 Tick getDisaggrMemLatency();
+bool isPut();
 void queueMemoryRead(MachineID id, Addr addr, Cycles latency);
 void queueMemoryWrite(MachineID id, Addr addr, Cycles latency,
                       DataBlock block);

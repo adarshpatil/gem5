@@ -73,7 +73,11 @@ class RubySystem : public ClockedObject
         curDisaggrMemLatency = 1;
     }
 
-    static void setPut(bool p) { faasput = p; }
+    static void setPut(bool p) {
+      // if faasput is going from 1->0
+      // this means put is ending; so issue invalidations
+      faasput = p;
+    }
     static bool isPut() { return faasput; }
 
     SimpleMemory *getPhysMem() { return m_phys_mem; }

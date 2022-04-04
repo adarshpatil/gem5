@@ -295,8 +295,10 @@ machine(MachineType:Directory, "Directory protocol")
             trigger(Event:GETS, in_msg.addr, TBEs[in_msg.addr]);
           } else if (in_msg.Type == CoherenceRequestType:GETX) {
             // add to putAddr only if faasstatus is PUT
-            putAddr.insert(in_msg.addr);
-            DPRINTF(RubySlicc,"%d added to putAddr %d\n", in_msg.addr, putAddr.count(in_msg.addr));
+            if (isPut()) {
+              putAddr.insert(in_msg.addr);
+              DPRINTF(RubySlicc,"%d added to putAddr %d\n", in_msg.addr, putAddr.count(in_msg.addr));
+            }
             trigger(Event:GETX, in_msg.addr, TBEs[in_msg.addr]);
           } else if (in_msg.Type == CoherenceRequestType:PUTX) {
             trigger(Event:PUTX, in_msg.addr, TBEs[in_msg.addr]);
