@@ -136,8 +136,8 @@ class AbstractController : public ClockedObject, public Consumer
     Port &getPort(const std::string &if_name,
                   PortID idx=InvalidPortID);
 
-    // ADARSH shim function to call RubySystem::getDisaggrMemLatency
-    Tick getDisaggrMemLatency();
+    // ADARSH shim function to call RubySystem::getCurDisaggrMemLatency
+    Tick getCurDisaggrMemLatency();
     // ADARSH shim function to call RubySystem::isPut()
     bool isPut();
     void queueMemoryRead(const MachineID &id, Addr addr, Cycles latency);

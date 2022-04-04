@@ -63,14 +63,18 @@ class RubySystem : public ClockedObject
     static bool getCooldownEnabled() { return m_cooldown_enabled; }
 
     // ADARSH
-    static Tick getDisaggrMemLatency() { return curDisaggrMemLatency; }
-    // sets curDisaggrMemLatency  
-    // if passed 1, it sets latency to realDisaggrMemLatency; if passed 0, it sets 1 (for local mem)
-    static void setDisaggrMemLatency(bool l) {
-      if(l)
-        curDisaggrMemLatency = realDisaggrMemLatency;
-      else
+    static Tick getCurDisaggrMemLatency() { return curDisaggrMemLatency; }
+    static Tick getRealDisaggrMemLatency() { return realDisaggrMemLatency; }
+    // sets curDisaggrMemLatency
+    static void setDisaggrMemLatency(Tick latency) {
+      // call this function as below
+      // setDisaggrMemLatency(1) OR setDisaggrMemLatency(getRealDisaggrMemLatency())
+
+      // guard against setting disaggrmemlatency to 0 (because it breaks)
+      if(latency == 0)
         curDisaggrMemLatency = 1;
+      else
+        curDisaggrMemLatency = latency;
     }
 
     static void setPut(bool p) {

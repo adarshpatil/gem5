@@ -849,26 +849,28 @@ SynchroTraceReplayer::processEodMarker(ThreadContext& tcxt, CoreID coreId)
     // ADARSH process eod marker changes memory link latency
     // from disaggr_mem_link_latency to 1
     inform("Reached EOD marker, dumping stats\n");
-    inform("current FaaS status %s, disaggr mem latency %d\n", toString(tcxt.faasstatus), RubySystem::getDisaggrMemLatency());
+    inform("current FaaS status %s, disaggr mem latency %d\n", toString(tcxt.faasstatus), RubySystem::getCurDisaggrMemLatency());
     Stats::schedStatEvent(true, false, curTick(), 0);
-    schedule(coreEvents[coreId], curTick());
     if(tcxt.faasstatus == FaaSStatus::GET) {
         tcxt.faasstatus = FaaSStatus::COMPUTE;
-        RubySystem::setDisaggrMemLatency(0);
+        RubySystem::setDisaggrMemLatency(1);
+        schedule(coreEvents[coreId], curTick() + (2*RubySystem::getRealDisaggrMemLatency()));
     }
     else if(tcxt.faasstatus == FaaSStatus::COMPUTE) {
         tcxt.faasstatus  = FaaSStatus::PUT;
         RubySystem::setDisaggrMemLatency(1);
         RubySystem::setPut(1);
+        schedule(coreEvents[coreId], curTick());
     }
     else if(tcxt.faasstatus == FaaSStatus::PUT) {
         RubySystem::setPut(0);
         // trigger invalidations to be sent
         tcxt.faasstatus  = FaaSStatus::GET;
         RubySystem::setDisaggrMemLatency(1);
+        schedule(coreEvents[coreId], curTick() + (2*RubySystem::getRealDisaggrMemLatency()) );
         inform("func complete, starting next func\n");
     }
-    inform("new FaaS status %s, disaggr mem latency %d\n", toString(tcxt.faasstatus),RubySystem::getDisaggrMemLatency());
+    inform("new FaaS status %s, disaggr mem latency %d\n", toString(tcxt.faasstatus),RubySystem::getCurDisaggrMemLatency());
     tcxt.evStream.pop();
 }
 

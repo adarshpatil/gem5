@@ -237,9 +237,9 @@ AbstractController::getPort(const std::string &if_name, PortID idx)
 }
 
 Tick
-AbstractController::getDisaggrMemLatency()
+AbstractController::getCurDisaggrMemLatency()
 {
-    return RubySystem::getDisaggrMemLatency();
+    return RubySystem::getCurDisaggrMemLatency();
 }
 
 bool
