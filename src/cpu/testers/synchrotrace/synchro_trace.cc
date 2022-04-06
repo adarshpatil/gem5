@@ -854,20 +854,26 @@ SynchroTraceReplayer::processEodMarker(ThreadContext& tcxt, CoreID coreId)
     if(tcxt.faasstatus == FaaSStatus::GET) {
         tcxt.faasstatus = FaaSStatus::COMPUTE;
         RubySystem::setDisaggrMemLatency(1);
-        schedule(coreEvents[coreId], curTick() + (2*RubySystem::getRealDisaggrMemLatency()));
+        schedule(coreEvents[coreId], curTick());
     }
     else if(tcxt.faasstatus == FaaSStatus::COMPUTE) {
         tcxt.faasstatus  = FaaSStatus::PUT;
         RubySystem::setDisaggrMemLatency(1);
         RubySystem::setPut(1);
-        schedule(coreEvents[coreId], curTick());
+        // the last request in PUT has DM latency; since it has to wait for mem ack
+        // subsequent requests take DM latency which is accounted for in msgRespRecv
+        schedule(coreEvents[coreId], curTick() + RubySystem::getRealDisaggrMemLatency());
     }
     else if(tcxt.faasstatus == FaaSStatus::PUT) {
         RubySystem::setPut(0);
         // trigger invalidations to be sent
+        // we are not sending invalidations or Replacements for now
+        // the PUT is assumed to have DM lat for each mem req
         tcxt.faasstatus  = FaaSStatus::GET;
         RubySystem::setDisaggrMemLatency(1);
-        schedule(coreEvents[coreId], curTick() + (2*RubySystem::getRealDisaggrMemLatency()) );
+        // the first request in GET has DM latency;
+        // subsequent requests take DM latency which is accounted for in msgRespRecv
+        schedule(coreEvents[coreId], curTick() + RubySystem::getRealDisaggrMemLatency());
         inform("func complete, starting next func\n");
     }
     inform("new FaaS status %s, disaggr mem latency %d\n", toString(tcxt.faasstatus),RubySystem::getCurDisaggrMemLatency());
@@ -971,7 +977,18 @@ SynchroTraceReplayer::msgRespRecv(CoreID coreId, PacketPtr pkt)
     issuedMemReq[coreId] = 0;
 
     // Schedule core to handle next event, now
-    schedule(coreEvents[coreId], curTick());
+    // if in compute no additional latency (only mem system latency)
+    // BASELINE: if in get or put delay next event by DM latency (in addition to mem system latency)
+    // CACHING: if in put delay next event by DM latency; if in GET no additional latency (assumes cached objects)
+    ThreadContext& tcxt = coreToThreadMap[coreId].front();
+    // CACHING
+    // if ((tcxt.faasstatus == FaaSStatus::COMPUTE) || (tcxt.faasstatus == FaaSStatus::GET)) {
+    // BASLINE
+    if ((tcxt.faasstatus == FaaSStatus::COMPUTE) {
+        schedule(coreEvents[coreId], curTick());
+    }
+    else
+        schedule(coreEvents[coreId], curTick() + RubySystem::getRealDisaggrMemLatency());
 }
 
 bool

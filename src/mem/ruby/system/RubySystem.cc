@@ -73,7 +73,9 @@ RubySystem::RubySystem(const Params *p)
     assert(p->disaggr_mem_latency!= 0);
     realDisaggrMemLatency = p->disaggr_mem_latency;
     // we assume execution starts with a get; so curDMLat = realDMLat
-    curDisaggrMemLatency = p->disaggr_mem_latency;
+    // new methodology; disaggrmemlatency = 1 always
+    // core scheduling accounts for disaggrmemlatency
+    curDisaggrMemLatency = 1;
     faasput = false;
     inform("setting disaggr_mem_latency %d ticks\n", curDisaggrMemLatency);
 
