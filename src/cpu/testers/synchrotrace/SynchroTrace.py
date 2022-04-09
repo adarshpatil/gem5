@@ -110,6 +110,8 @@ def addSynchrotraceOptions(parser):
                       help="Frequency at which to wake up monitor event")
     parser.add_option("--cpi-iops", type="float", default=1,
                       help="CPI for integer ops")
+    parser.add_option("--disaggr-mem-link-bandwidth", type="string", default='80Gbps',
+                      help="disaggregated memory link bandwidth")
     parser.add_option("--cpi-flops", type="float", default=1,
                       help="CPI for floating point ops")
     parser.add_option("--pc-skip", action="store_true", default=False,
@@ -146,4 +148,6 @@ class SynchroTraceReplayer(MemObject):
     warmup_ops = Param.UInt64(20000000, "Number of warmup ops to simulate")
     # detailed_ops = 0 means simulate till end of program
     detailed_ops = Param.UInt64(0, "Number of detailed ops to simulate")
+    ## change this to use Param.NetworkBandwidth or Param.MemoryBandwidth
+    disaggr_mem_link_bandwidth = Param.NetworkBandwidth('80Gbps', "disaggregated memory link bandwidth")
     system = Param.System(Parent.any, "System we belong to")

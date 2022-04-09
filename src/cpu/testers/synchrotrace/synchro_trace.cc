@@ -70,7 +70,8 @@ SynchroTraceReplayer::SynchroTraceReplayer(const Params *p)
     barrStatDump(p->barrier_stat_dump),
     warmup_ops(p->warmup_ops),
     detailed_ops(p->detailed_ops),
-    bw_multiplier(100),
+    disaggr_mem_bandwidth(p->disaggr_mem_link_bandwidth),
+    bw_multiplier(83),
     bw_remaining(bw_multiplier),
     eventDir(p->event_dir),
     outDir(p->output_dir),
@@ -118,7 +119,7 @@ SynchroTraceReplayer::SynchroTraceReplayer(const Params *p)
              "number of cpus expected to be power of 2, but got %d",
              numCpus);
 
-    inform("warmup ops: %d, detailed ops: %d \n", warmup_ops, detailed_ops);
+    inform("warmup ops: %d, detailed ops: %d, disaggr mem bandwidth %f GBps \n", warmup_ops, detailed_ops, disaggr_mem_bandwidth);
 
     // ADARSH skip fast forward if its a single threaded trace; go directly to warmup
     if(numThreads == 1)
@@ -163,6 +164,15 @@ SynchroTraceReplayer::init()
     fatal_if(!isPowerOf2(blockSizeBytes),
              "cache block size expected to be power of 2, but got: %d",
              blockSizeBytes);
+
+    // the bandwidth multiplier is calculated as a cacheline multiplier
+    // we add 1 disaggr mem latency every bw_multiplier cache lines
+    // ADARSH TODO calculate the multiplier using disaggr_mem_bw and disaggr_mem_lat
+    // currently this multiplier is calaculated using 500ns and 10.7GBps (10GiB/s) [ThymesisFlow]
+    // 64 / 500ns = 0.128 GBps & 10.7 GBPs / 0.128 GBps = 83.5
+    bw_multiplier = 83;
+    bw_remaining = bw_multiplier;
+    inform("bandwidth multiplier %d\n", bw_multiplier);
 
     // Initialize the events that will simulate time for each core
     // via sleeps/wakeups (scheduling a wakeup after N cycles).
