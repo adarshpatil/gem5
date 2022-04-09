@@ -70,6 +70,8 @@ SynchroTraceReplayer::SynchroTraceReplayer(const Params *p)
     barrStatDump(p->barrier_stat_dump),
     warmup_ops(p->warmup_ops),
     detailed_ops(p->detailed_ops),
+    bw_multiplier(100),
+    bw_remaining(bw_multiplier),
     eventDir(p->event_dir),
     outDir(p->output_dir),
     CPI_IOPS(p->cpi_iops),
@@ -860,6 +862,7 @@ SynchroTraceReplayer::processEodMarker(ThreadContext& tcxt, CoreID coreId)
         tcxt.faasstatus  = FaaSStatus::PUT;
         RubySystem::setDisaggrMemLatency(1);
         RubySystem::setPut(1);
+        bw_remaining = bw_multiplier;
         // the last request in PUT has DM latency; since it has to wait for mem ack
         // subsequent requests take DM latency which is accounted for in msgRespRecv
         schedule(coreEvents[coreId], curTick() + RubySystem::getRealDisaggrMemLatency());
@@ -874,6 +877,7 @@ SynchroTraceReplayer::processEodMarker(ThreadContext& tcxt, CoreID coreId)
         // the first request in GET has DM latency;
         // subsequent requests take DM latency which is accounted for in msgRespRecv
         schedule(coreEvents[coreId], curTick() + RubySystem::getRealDisaggrMemLatency());
+        bw_remaining = bw_multiplier;
         inform("func complete, starting next func\n");
     }
     inform("new FaaS status %s, disaggr mem latency %d\n", toString(tcxt.faasstatus),RubySystem::getCurDisaggrMemLatency());
@@ -983,12 +987,19 @@ SynchroTraceReplayer::msgRespRecv(CoreID coreId, PacketPtr pkt)
     ThreadContext& tcxt = coreToThreadMap[coreId].front();
     // CACHING
     // if ((tcxt.faasstatus == FaaSStatus::COMPUTE) || (tcxt.faasstatus == FaaSStatus::GET)) {
-    // BASLINE
-    if ((tcxt.faasstatus == FaaSStatus::COMPUTE) {
+    // BASELINE
+    if (tcxt.faasstatus == FaaSStatus::COMPUTE) {
         schedule(coreEvents[coreId], curTick());
     }
-    else
-        schedule(coreEvents[coreId], curTick() + RubySystem::getRealDisaggrMemLatency());
+    else {
+        Tick latency = 0;
+        if (bw_remaining == 0) {
+            latency = RubySystem::getRealDisaggrMemLatency();
+            bw_remaining = bw_multiplier;
+        }
+        bw_remaining--;
+        schedule(coreEvents[coreId], curTick() + latency);
+    }
 }
 
 bool

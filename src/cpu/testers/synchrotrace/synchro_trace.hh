@@ -470,6 +470,11 @@ class SynchroTraceReplayer : public MemObject
     /** ADARSH number of ops (~=insts) to simulate */
     uint64_t warmup_ops;
     uint64_t detailed_ops;
+
+    // ADARSH simulating disaggregated memory bandwidth
+    uint8_t bw_multiplier;
+    uint8_t bw_remaining;
+    
     // bool variables indicating which phase is currently executing
     bool in_warmup = false;
     bool in_detailed = false;
