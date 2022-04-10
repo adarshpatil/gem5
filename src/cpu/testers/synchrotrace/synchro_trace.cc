@@ -1017,7 +1017,7 @@ SynchroTraceReplayer::msgRespRecv(CoreID coreId, PacketPtr pkt)
     else {
         Tick latency = delta;
         if (bw_remaining == 0) {
-            latency = RubySystem::getRealDisaggrMemLatency();
+            latency += RubySystem::getRealDisaggrMemLatency();
             bw_remaining = bw_multiplier;
         }
         bw_remaining--;
