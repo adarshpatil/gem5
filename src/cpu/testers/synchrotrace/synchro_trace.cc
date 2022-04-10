@@ -996,14 +996,26 @@ SynchroTraceReplayer::msgRespRecv(CoreID coreId, PacketPtr pkt)
     // BASELINE: if in get or put delay next event by DM latency (in addition to mem system latency)
     // CACHING: if in put delay next event by DM latency; if in GET no additional latency (assumes cached objects)
     ThreadContext& tcxt = coreToThreadMap[coreId].front();
+
+    // Introducing a delta for baseline to compensate for some requests in GET
+    // hitting in cache when they should actually read from DRAM
+    // This happens because the previous PUT is not doing a L1 replacement / invalidation for durability
+    // Intel Haswell Mem Latency is between 60-100ns
+    // We use delta here as slightly lower 50ns (50000 ticks) to also accounting for DRAM b/w
+    // TODO: First GET already reads from DRAM, so it should not get delta
+
     // CACHING
+    // Tick delta = 0;
     // if ((tcxt.faasstatus == FaaSStatus::COMPUTE) || (tcxt.faasstatus == FaaSStatus::GET)) {
+
     // BASELINE
+    Tick delta = 50000;
     if (tcxt.faasstatus == FaaSStatus::COMPUTE) {
+
         schedule(coreEvents[coreId], curTick());
     }
     else {
-        Tick latency = 0;
+        Tick latency = delta;
         if (bw_remaining == 0) {
             latency = RubySystem::getRealDisaggrMemLatency();
             bw_remaining = bw_multiplier;
