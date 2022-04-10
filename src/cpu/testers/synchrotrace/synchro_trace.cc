@@ -71,8 +71,6 @@ SynchroTraceReplayer::SynchroTraceReplayer(const Params *p)
     warmup_ops(p->warmup_ops),
     detailed_ops(p->detailed_ops),
     disaggr_mem_bandwidth(p->disaggr_mem_link_bandwidth),
-    bw_multiplier(83),
-    bw_remaining(bw_multiplier),
     eventDir(p->event_dir),
     outDir(p->output_dir),
     CPI_IOPS(p->cpi_iops),
@@ -119,7 +117,7 @@ SynchroTraceReplayer::SynchroTraceReplayer(const Params *p)
              "number of cpus expected to be power of 2, but got %d",
              numCpus);
 
-    inform("warmup ops: %d, detailed ops: %d, disaggr mem bandwidth %f GBps \n", warmup_ops, detailed_ops, disaggr_mem_bandwidth);
+    inform("warmup ops: %d, detailed ops: %d\n", warmup_ops, detailed_ops);
 
     // ADARSH skip fast forward if its a single threaded trace; go directly to warmup
     if(numThreads == 1)
@@ -167,10 +165,13 @@ SynchroTraceReplayer::init()
 
     // the bandwidth multiplier is calculated as a cacheline multiplier
     // we add 1 disaggr mem latency every bw_multiplier cache lines
-    // ADARSH TODO calculate the multiplier using disaggr_mem_bw and disaggr_mem_lat
-    // currently this multiplier is calaculated using 500ns and 10.7GBps (10GiB/s) [ThymesisFlow]
-    // 64 / 500ns = 0.128 GBps & 10.7 GBPs / 0.128 GBps = 83.5
-    bw_multiplier = 83;
+    // We calculate the multiplier using disaggr_mem_bw and disaggr_mem_lat
+    // we currently this multiplier is calaculated using 500ns and 10.7GBps (10GiB/s) [ThymesisFlow]
+    // 64 / 500ns = 0.128 GBps & 10.7 GBPs / 0.128 GBps = 83.5; multiplier = (bw*lat / 64)
+    // FIXED: disaggr_mem_bandwidth here is expressed as ticks per byte (inverse of bandwidth - bytes per sec)
+    // The formula is now ( (1/bw) * lat ) / 64
+    inform("disaggr mem bandwidth %f disaggr mem latency %d\n", disaggr_mem_bandwidth, RubySystem::getRealDisaggrMemLatency());
+    bw_multiplier = RubySystem::getRealDisaggrMemLatency() / (64 * disaggr_mem_bandwidth);
     bw_remaining = bw_multiplier;
     inform("bandwidth multiplier %d\n", bw_multiplier);
 
