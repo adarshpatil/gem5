@@ -871,7 +871,7 @@ SynchroTraceReplayer::processEodMarker(ThreadContext& tcxt, CoreID coreId)
     // the core stalls for different time in msgresprecv depending on the phase
     inform("Reached EOD marker, on core %d thread %d\n", coreId, tcxt.threadId);
     inform("current FaaS status %s\n", toString(tcxt.faasstatus));
-    //Stats::schedStatEvent(true, false, curTick(), 0);
+    Stats::schedStatEvent(true, false, curTick(), 0);
     if(tcxt.faasstatus == FaaSStatus::GET) {
         tcxt.faasstatus = FaaSStatus::COMPUTE;
         // RubySystem::setDisaggrMemLatency(1);
@@ -1001,10 +1001,11 @@ SynchroTraceReplayer::msgRespRecv(CoreID coreId, PacketPtr pkt)
     issuedMemReq[coreId] = 0;
 
     // Schedule core to handle next event, now
+    ThreadContext& tcxt = coreToThreadMap[coreId].front();
+
     // if in compute no additional latency (only mem system latency)
     // BASELINE: if in get or put delay next event by DM latency (in addition to mem system latency)
     // CACHING: if in put delay next event by DM latency; if in GET no additional latency (assumes cached objects)
-    ThreadContext& tcxt = coreToThreadMap[coreId].front();
 
     // Introducing a delta for baseline to compensate for some requests in GET
     // hitting in cache when they should actually read from DRAM
