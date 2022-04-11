@@ -416,7 +416,10 @@ StTraceParser::parseThreadEventTo(std::vector<StEvent>& buffer,
     auto s = scn::make_stream(line);
     auto res = scn::scan(s, "^ {:d}^{:x}", typeVal, pthAddr);
     fatal_if(!res, "error parsing pthread api trace event");
-
+    if (typeVal == 3)
+        inform("thread create reached %d on threadID %d\n", pthAddr, threadId);
+    else if (typeVal == 4)
+        inform("thread join reached %d on threadID %d\n", pthAddr, threadId);
     // pthread event type
     assert(typeVal < max);
     const ThreadApi::EventType type =

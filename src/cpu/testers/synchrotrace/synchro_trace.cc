@@ -234,7 +234,9 @@ SynchroTraceReplayer::wakeupMonitor()
     {
         inform("%d warmup ops completed, switching to detailed", total_ops);
         // dump and reset stats after warmup
-        Stats::schedStatEvent(true, true, curTick(), 0);
+        // For disaggr mem sims, we don't pass warmup flag
+        // Just for safety don't reset stats!
+        Stats::schedStatEvent(true, false, curTick(), 0);
 
         // mark in_warmup false and in_detailed true
         in_warmup = false; in_detailed = true;
@@ -536,7 +538,9 @@ SynchroTraceReplayer::replayThreadAPI(ThreadContext& tcxt, CoreID coreId)
                  "Thread %d is creating other threads but isn't event ACTIVE!",
                  tcxt.threadId);
 
-        if (!roiFlag)
+        // for disaggr mem sims, we don't care about parallel region
+        // parallel regions are for executing multiple funtions on different cores
+        /*if (!roiFlag)
         {
             roiFlag = true;
             // ADARSH TODO trigger sim switch from fast fwd to detailed
@@ -547,7 +551,7 @@ SynchroTraceReplayer::replayThreadAPI(ThreadContext& tcxt, CoreID coreId)
             Stats::schedStatEvent(true, true, curTick(), 0);
             // warmup region starts
             in_warmup = true;
-        }
+        }*/
 
         workerThreadCount++;
 
@@ -859,19 +863,20 @@ SynchroTraceReplayer::processInsnMarker(ThreadContext& tcxt, CoreID coreId)
 void
 SynchroTraceReplayer::processEodMarker(ThreadContext& tcxt, CoreID coreId)
 {
-    // ADARSH process eod marker changes memory link latency
-    // from disaggr_mem_link_latency to 1
-    inform("Reached EOD marker, dumping stats\n");
-    inform("current FaaS status %s, disaggr mem latency %d\n", toString(tcxt.faasstatus), RubySystem::getCurDisaggrMemLatency());
-    Stats::schedStatEvent(true, false, curTick(), 0);
+    // ADARSH process eod marker changes the faastatus
+    // disaggr_mem_link_latency is always 1 (even initially set to 1 in RubySystem.cc:78 constructor)
+    // the core stalls for different time in msgresprecv depending on the phase
+    inform("Reached EOD marker, on core %d thread %d\n", coreId, tcxt.threadId);
+    inform("current FaaS status %s\n", toString(tcxt.faasstatus));
+    //Stats::schedStatEvent(true, false, curTick(), 0);
     if(tcxt.faasstatus == FaaSStatus::GET) {
         tcxt.faasstatus = FaaSStatus::COMPUTE;
-        RubySystem::setDisaggrMemLatency(1);
+        // RubySystem::setDisaggrMemLatency(1);
         schedule(coreEvents[coreId], curTick());
     }
     else if(tcxt.faasstatus == FaaSStatus::COMPUTE) {
         tcxt.faasstatus  = FaaSStatus::PUT;
-        RubySystem::setDisaggrMemLatency(1);
+        // RubySystem::setDisaggrMemLatency(1);
         RubySystem::setPut(1);
         bw_remaining = bw_multiplier;
         // the last request in PUT has DM latency; since it has to wait for mem ack
@@ -884,14 +889,14 @@ SynchroTraceReplayer::processEodMarker(ThreadContext& tcxt, CoreID coreId)
         // we are not sending invalidations or Replacements for now
         // the PUT is assumed to have DM lat for each mem req
         tcxt.faasstatus  = FaaSStatus::GET;
-        RubySystem::setDisaggrMemLatency(1);
+        // RubySystem::setDisaggrMemLatency(1);
         // the first request in GET has DM latency;
         // subsequent requests take DM latency which is accounted for in msgRespRecv
         schedule(coreEvents[coreId], curTick() + RubySystem::getRealDisaggrMemLatency());
         bw_remaining = bw_multiplier;
         inform("func complete, starting next func\n");
     }
-    inform("new FaaS status %s, disaggr mem latency %d\n", toString(tcxt.faasstatus),RubySystem::getCurDisaggrMemLatency());
+    inform("new FaaS status %s\n", toString(tcxt.faasstatus));
     tcxt.evStream.pop();
 }
 
