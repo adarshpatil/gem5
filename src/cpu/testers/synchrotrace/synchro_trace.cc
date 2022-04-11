@@ -120,8 +120,9 @@ SynchroTraceReplayer::SynchroTraceReplayer(const Params *p)
     inform("warmup ops: %d, detailed ops: %d\n", warmup_ops, detailed_ops);
 
     // ADARSH skip fast forward if its a single threaded trace; go directly to warmup
-    if(numThreads == 1)
-        in_warmup = true;
+    // for disaggr mem sim; everything is in detailed, no warmup
+    // if(numThreads == 1)
+    //    in_warmup = true;
 
     // Initialize the ports to the rest of the system
     for (CoreID i = 0; i < numCpus; i++)
@@ -229,6 +230,8 @@ SynchroTraceReplayer::wakeupMonitor()
     // FF in_warmup==false in_detailed==false
     // W in_warmup==true in_detailed==false
     // D in_warmup==false in_detailed==true
+    // for disaggr mem sims; everything is in detailed
+    // the default value of in_detailed=true (synchro_trace.hh:482)
     uint64_t total_ops = num_iops.value() + num_flops.value() + num_mem.value();
     if (in_warmup && !in_detailed && (total_ops >= warmup_ops))
     {
@@ -612,7 +615,7 @@ SynchroTraceReplayer::replayThreadAPI(ThreadContext& tcxt, CoreID coreId)
             // reset to active, in case this thread was previously blocked
             tcxt.status = ThreadStatus::ACTIVE;
             workerThreadCount--;
-            DPRINTF(STDebug, "Thread %d joined", workertcxt.threadId);
+            DPRINTF(STDebug, "Thread %d joined workerThreadcout %d\n", workertcxt.threadId, workerThreadCount);
             if (DTRACE(ROI) && !workerThreadCount)
                 DPRINTFN("Last thread joined!");
             tcxt.evStream.pop();
@@ -905,6 +908,7 @@ SynchroTraceReplayer::processEndMarker(ThreadContext& tcxt, CoreID coreId)
 {
         tcxt.status = ThreadStatus::COMPLETED;
         tcxt.evStream.pop();
+        inform("end of events core %d thead %d", coreId, tcxt.threadId);
 
         // it's okay if there's not another thread to schedule
         (void)tryCxtSwapAndSchedule(coreId);

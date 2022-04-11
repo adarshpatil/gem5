@@ -477,8 +477,9 @@ class SynchroTraceReplayer : public MemObject
     uint8_t bw_remaining;
 
     // bool variables indicating which phase is currently executing
+    // for disaggr mem simulations; the entire sim is in_detailed mode
     bool in_warmup = false;
-    bool in_detailed = false;
+    bool in_detailed = true;
 
     /** Directory of Sigil Traces and Pthread metadata file */
     std::string eventDir;
