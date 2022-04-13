@@ -61,6 +61,8 @@
 #include "sim/sim_exit.hh"
 #include "synchro_trace.hh"
 
+#define BASELINE
+
 SynchroTraceReplayer::SynchroTraceReplayer(const Params *p)
   : MemObject(p),
     // general configuration
@@ -870,6 +872,7 @@ SynchroTraceReplayer::processEodMarker(ThreadContext& tcxt, CoreID coreId)
     // disaggr_mem_link_latency is always 1 (even initially set to 1 in RubySystem.cc:78 constructor)
     // the core stalls for different time in msgresprecv depending on the phase
     inform("Reached EOD marker, on core %d thread %d\n", coreId, tcxt.threadId);
+    tcxt.eodCtr++;
     inform("current FaaS status %s\n", toString(tcxt.faasstatus));
     Stats::schedStatEvent(true, false, curTick(), 0);
     if(tcxt.faasstatus == FaaSStatus::GET) {
@@ -882,19 +885,34 @@ SynchroTraceReplayer::processEodMarker(ThreadContext& tcxt, CoreID coreId)
         // RubySystem::setDisaggrMemLatency(1);
         RubySystem::setPut(1);
         bw_remaining = bw_multiplier;
-        // the last request in PUT has DM latency; since it has to wait for mem ack
-        // subsequent requests take DM latency which is accounted for in msgRespRecv
-        schedule(coreEvents[coreId], curTick() + RubySystem::getRealDisaggrMemLatency());
+        
+        // We account for PUT issue latency intitally (going from compute server -> DM) 
+        Tick latency = RubySystem::getRealDisaggrMemLatency();
+
+
+        // CACHING
+        // at the end of the PUT, we trigger invalidations to be sent, if any sharers exist
+        // we account for invalidation latency by delaying the first PUT schedule
+        // for this we add reverse addr traslation and 1 RTT invalidation latency
+        // translation: 1.4 micro sec = 1,400,000 ticks, invalidation: 2 x DM lat
+        // when eodCtr == x we add invalidation latency, x is decided manually based on the benchmark and schedule
+        #ifdef CACHING
+        if (tcxt.eodCtr == 3) {
+            latency += 1400000 + (2*RubySystem::getRealDisaggrMemLatency());
+            inform("reached %d EOD, sending invalidations", tcxt.eodCtr);
+        }
+        #endif            
+
+        // latency for subsequent requests in PUT is accounted for in msgRespRecv
+        schedule(coreEvents[coreId], curTick() + latency);
+        
     }
     else if(tcxt.faasstatus == FaaSStatus::PUT) {
         RubySystem::setPut(0);
-        // trigger invalidations to be sent
-        // we are not sending invalidations or Replacements for now
-        // the PUT is assumed to have DM lat for each mem req
         tcxt.faasstatus  = FaaSStatus::GET;
         // RubySystem::setDisaggrMemLatency(1);
-        // the first request in GET has DM latency;
-        // subsequent requests take DM latency which is accounted for in msgRespRecv
+        // To account for GET issue latency initially (going from compute server -> DM)
+        // latency for subsequent requests in GET is accounted for in msgRespRecv
         schedule(coreEvents[coreId], curTick() + RubySystem::getRealDisaggrMemLatency());
         bw_remaining = bw_multiplier;
         inform("func complete, starting next func\n");
@@ -995,8 +1013,7 @@ SynchroTraceReplayer::msgRespRecv(CoreID coreId, PacketPtr pkt)
     // assert this is the expected timing response for the last request
     // this core/thread sent
     // ADARSH
-    DPRINTF(STDebug, "was expecting response for addr %x core %d\n",
-            issuedMemReq[coreId], coreId);
+    DPRINTF(STDebug, "was expecting response for addr %x core %d\n", issuedMemReq[coreId], coreId);
     // reset issuedMemReq
     issuedMemReq[coreId] = 0;
 
@@ -1007,20 +1024,22 @@ SynchroTraceReplayer::msgRespRecv(CoreID coreId, PacketPtr pkt)
     // BASELINE: if in get or put delay next event by DM latency (in addition to mem system latency)
     // CACHING: if in put delay next event by DM latency; if in GET no additional latency (assumes cached objects)
 
-    // Introducing a delta for baseline to compensate for some requests in GET
+    // Introducing a delta for BASELINE to compensate for some requests in GET
     // hitting in cache when they should actually read from DRAM
     // This happens because the previous PUT is not doing a L1 replacement / invalidation for durability
     // Intel Haswell Mem Latency is between 60-100ns
     // We use delta here as slightly lower 50ns (50000 ticks) to also accounting for DRAM b/w
     // TODO: First GET already reads from DRAM, so it should not get delta
 
-    // CACHING
-    // Tick delta = 0;
-    // if ((tcxt.faasstatus == FaaSStatus::COMPUTE) || (tcxt.faasstatus == FaaSStatus::GET)) {
+    #ifdef CACHING
+    Tick delta = 0;
+    if ((tcxt.faasstatus == FaaSStatus::COMPUTE) || (tcxt.faasstatus == FaaSStatus::GET)) {
+    #endif
 
-    // BASELINE
+    #ifdef BASELINE
     Tick delta = 50000;
     if (tcxt.faasstatus == FaaSStatus::COMPUTE) {
+    #endif
 
         schedule(coreEvents[coreId], curTick());
     }

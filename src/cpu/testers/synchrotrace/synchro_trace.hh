@@ -349,6 +349,8 @@ class SynchroTraceReplayer : public MemObject
         StEventStream evStream;
         ThreadStatus status;
         FaaSStatus faasstatus;
+        // eod marker counter to track which func/phase we are currently in
+        uint8_t eodCtr;
 
         ThreadContext(ThreadID threadId,
                       const std::string& eventDir,
@@ -361,7 +363,8 @@ class SynchroTraceReplayer : public MemObject
                      blockSizeBytes,
                      memSizeBytes},
             status{ThreadStatus::INACTIVE},
-            faasstatus{FaaSStatus::GET}
+            faasstatus{FaaSStatus::GET},
+            eodCtr{0}
         {}
 
         // Note that a 'running' thread may be:
