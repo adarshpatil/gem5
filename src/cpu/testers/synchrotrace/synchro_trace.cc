@@ -61,7 +61,7 @@
 #include "sim/sim_exit.hh"
 #include "synchro_trace.hh"
 
-#define BASELINE
+#define CACHING
 
 SynchroTraceReplayer::SynchroTraceReplayer(const Params *p)
   : MemObject(p),
@@ -871,8 +871,8 @@ SynchroTraceReplayer::processEodMarker(ThreadContext& tcxt, CoreID coreId)
     // ADARSH process eod marker changes the faastatus
     // disaggr_mem_link_latency is always 1 (even initially set to 1 in RubySystem.cc:78 constructor)
     // the core stalls for different time in msgresprecv depending on the phase
-    inform("Reached EOD marker, on core %d thread %d\n", coreId, tcxt.threadId);
     tcxt.eodCtr++;
+    inform("Reached EOD marker, on core %d thread %d eodCtr %d\n", coreId, tcxt.threadId, tcxt.eodCtr);
     inform("current FaaS status %s\n", toString(tcxt.faasstatus));
     Stats::schedStatEvent(true, false, curTick(), 0);
     if(tcxt.faasstatus == FaaSStatus::GET) {
@@ -895,11 +895,11 @@ SynchroTraceReplayer::processEodMarker(ThreadContext& tcxt, CoreID coreId)
         // we account for invalidation latency by delaying the first PUT schedule
         // for this we add reverse addr traslation and 1 RTT invalidation latency
         // translation: 1.4 micro sec = 1,400,000 ticks, invalidation: 2 x DM lat
-        // when eodCtr == x we add invalidation latency, x is decided manually based on the benchmark and schedule
+        // when eodCtr == x and threadID == y we add invalidation latency, x and y is decided manually based on the benchmark and schedule
         #ifdef CACHING
-        if (tcxt.eodCtr == 3) {
+        if ((tcxt.eodCtr == 2) && (tcxt.threadId == 1)) {
             latency += 1400000 + (2*RubySystem::getRealDisaggrMemLatency());
-            inform("reached %d EOD, sending invalidations", tcxt.eodCtr);
+            inform("sending invalidations");
         }
         #endif            
 
