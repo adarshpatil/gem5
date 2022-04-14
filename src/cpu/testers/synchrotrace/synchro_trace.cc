@@ -1030,17 +1030,20 @@ SynchroTraceReplayer::msgRespRecv(CoreID coreId, PacketPtr pkt)
     // This happens because the previous PUT is not doing a L1 replacement / invalidation for durability
     // Intel Haswell Mem Latency is between 60-100ns
     // We use delta here as slightly lower 50ns (50000 ticks) to also accounting for DRAM b/w
-    // TODO: First GET already reads from DRAM, so it should not get delta
+    Tick delta = 0;
 
     #ifdef CACHING
-    Tick delta = 0;
     if ((tcxt.faasstatus == FaaSStatus::COMPUTE) ||
     ( (tcxt.faasstatus == FaaSStatus::GET) && (tcxt.threadId == 0) && (tcxt.eodCtr != 0) ) ||
     ( (tcxt.faasstatus == FaaSStatus::GET) && (tcxt.threadId == 1) && (tcxt.eodCtr != 0) ) ) {
     #endif
 
     #ifdef BASELINE
-    Tick delta = 50000;
+    // First GET already reads from DRAM, so it should not get delta
+    if (( (tcxt.faasstatus == FaaSStatus::GET) && (tcxt.threadId == 0) && (tcxt.eodCtr != 0) ) ||
+    ( (tcxt.faasstatus == FaaSStatus::GET) && (tcxt.threadId == 1) && (tcxt.eodCtr != 0) )) {
+        delta = 50000;
+    }
     if (tcxt.faasstatus == FaaSStatus::COMPUTE) {
     #endif
 
