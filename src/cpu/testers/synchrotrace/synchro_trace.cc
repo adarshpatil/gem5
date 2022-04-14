@@ -900,6 +900,7 @@ SynchroTraceReplayer::processEodMarker(ThreadContext& tcxt, CoreID coreId)
         if ((tcxt.eodCtr == 2) && (tcxt.threadId == 1)) {
             latency += 1400000 + (2*RubySystem::getRealDisaggrMemLatency());
             inform("sending invalidations");
+            // For optimized no-invalidations Bolt caching, comment above lines
         }
         #endif            
 
@@ -1033,7 +1034,9 @@ SynchroTraceReplayer::msgRespRecv(CoreID coreId, PacketPtr pkt)
 
     #ifdef CACHING
     Tick delta = 0;
-    if ((tcxt.faasstatus == FaaSStatus::COMPUTE) || (tcxt.faasstatus == FaaSStatus::GET)) {
+    if ((tcxt.faasstatus == FaaSStatus::COMPUTE) ||
+    ( (tcxt.faasstatus == FaaSStatus::GET) && (tcxt.threadId == 0) && (tcxt.eodCtr != 0) ) ||
+    ( (tcxt.faasstatus == FaaSStatus::GET) && (tcxt.threadId == 1) && (tcxt.eodCtr != 0) ) ) {
     #endif
 
     #ifdef BASELINE
