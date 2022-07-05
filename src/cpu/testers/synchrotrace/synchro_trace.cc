@@ -176,6 +176,7 @@ SynchroTraceReplayer::init()
     inform("disaggr mem bandwidth %f disaggr mem latency %d\n", disaggr_mem_bandwidth, RubySystem::getRealDisaggrMemLatency());
     bw_multiplier = RubySystem::getRealDisaggrMemLatency() / (64 * disaggr_mem_bandwidth);
     bw_remaining = bw_multiplier;
+    reset_bw_remaining = 0;
     inform("bandwidth multiplier %d\n", bw_multiplier);
 
     // Initialize the events that will simulate time for each core
@@ -876,6 +877,8 @@ SynchroTraceReplayer::processEodMarker(ThreadContext& tcxt, CoreID coreId)
     inform("current FaaS status %s\n", toString(tcxt.faasstatus));
     Stats::schedStatEvent(true, false, curTick(), 0);
     if(tcxt.faasstatus == FaaSStatus::GET) {
+        inform("bw_remaining reset %d times\n", reset_bw_remaining);
+        reset_bw_remaining = 0;
         tcxt.faasstatus = FaaSStatus::COMPUTE;
         // RubySystem::setDisaggrMemLatency(1);
         schedule(coreEvents[coreId], curTick());
@@ -916,6 +919,8 @@ SynchroTraceReplayer::processEodMarker(ThreadContext& tcxt, CoreID coreId)
         // latency for subsequent requests in GET is accounted for in msgRespRecv
         schedule(coreEvents[coreId], curTick() + RubySystem::getRealDisaggrMemLatency());
         bw_remaining = bw_multiplier;
+        inform("bw_remaining reset %d times\n", reset_bw_remaining);
+        reset_bw_remaining = 0;
         inform("func complete, starting next func\n");
     }
     inform("new FaaS status %s\n", toString(tcxt.faasstatus));
@@ -927,7 +932,9 @@ SynchroTraceReplayer::processEndMarker(ThreadContext& tcxt, CoreID coreId)
 {
         tcxt.status = ThreadStatus::COMPLETED;
         tcxt.evStream.pop();
+        inform("bw_remaining reset %d times\n", reset_bw_remaining);
         inform("end of events core %d thead %d", coreId, tcxt.threadId);
+        Stats::schedStatEvent(true, false, curTick(), 0);
 
         // it's okay if there's not another thread to schedule
         (void)tryCxtSwapAndSchedule(coreId);
@@ -1054,6 +1061,7 @@ SynchroTraceReplayer::msgRespRecv(CoreID coreId, PacketPtr pkt)
         if (bw_remaining == 0) {
             latency += RubySystem::getRealDisaggrMemLatency();
             bw_remaining = bw_multiplier;
+            reset_bw_remaining++;
         }
         bw_remaining--;
         schedule(coreEvents[coreId], curTick() + latency);

@@ -478,6 +478,9 @@ class SynchroTraceReplayer : public MemObject
     float disaggr_mem_bandwidth;
     uint8_t bw_multiplier;
     uint8_t bw_remaining;
+    // ADARSH this counts the number of times bw_remaining was reset
+    // helps to debug how much data the function get/put from DM
+    uint8_t reset_bw_remaining;
 
     // bool variables indicating which phase is currently executing
     // for disaggr mem simulations; the entire sim is in_detailed mode
