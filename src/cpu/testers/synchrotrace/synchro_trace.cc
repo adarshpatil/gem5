@@ -61,7 +61,7 @@
 #include "sim/sim_exit.hh"
 #include "synchro_trace.hh"
 
-#define CACHING
+#define BASELINE
 
 SynchroTraceReplayer::SynchroTraceReplayer(const Params *p)
   : MemObject(p),
@@ -386,7 +386,7 @@ SynchroTraceReplayer::replayCompute(ThreadContext& tcxt, CoreID coreId)
     schedule(coreEvents[coreId],
              curTick() + clockPeriod() +
              (clockPeriod() * (Cycles(CPI_IOPS * ops.iops) +
-                               Cycles(CPI_FLOPS * ops.flops))));
+                              Cycles(CPI_FLOPS * ops.flops))));
     tcxt.evStream.pop();
 }
 
@@ -467,7 +467,7 @@ SynchroTraceReplayer::replayThreadAPI(ThreadContext& tcxt, CoreID coreId)
     // ADARSH eventType  and current status
     // MUTEX_LOCK, MUTEX_UNLOCK, - commented
     // THREAD_CREATE, THREAD_JOIN, - retained
-    // BARRIER_WAIT, - commented
+    // BARRIER_WAIT, - retained
     // COND_WAIT, COND_SG/_BR, - commented
     // SPIN_LOCK, SPIN_UNLOCK - commented
     // or unimplemented events
@@ -650,9 +650,22 @@ SynchroTraceReplayer::replayThreadAPI(ThreadContext& tcxt, CoreID coreId)
     // Barriers
     case ThreadApi::EventType::BARRIER_WAIT:
     {
-#if 0
+        if(tcxt.status == ThreadStatus::BLOCKED_BARRIER){
+            schedule(coreEvents[coreId],
+                         curTick() + clockPeriod() * Cycles(schedSliceCycles));
+            break;
+        }
+        if((perThreadBarrierBlocked[tcxt.threadId] == true) && (tcxt.status == ThreadStatus::ACTIVE)){
+            DPRINTF(STDebug,"Thread %d unblocked by last thread for barrier <0x%x>\n", tcxt.threadId, pthAddr);
+            tcxt.evStream.pop();
+            schedule(coreEvents[coreId],
+                     curTick() + clockPeriod() * Cycles(pthCycles));
+            perThreadBarrierBlocked[tcxt.threadId] = false;
+            break;
+        }
+        DPRINTF(STDebug,"Thread %d reached barrier <0x%x>\n", tcxt.threadId, pthAddr);
         auto p = threadBarrierMap[pthAddr].insert(tcxt.threadId);
-        fatal_if(p.second, "Thread %d already waiting in barrier <0x%X>",
+        fatal_if(p.second != true, "Thread %d already waiting in barrier <0x%X>",
                  tcxt.threadId,
                  pthAddr);
 
@@ -660,6 +673,7 @@ SynchroTraceReplayer::replayThreadAPI(ThreadContext& tcxt, CoreID coreId)
         // in which case, unblock all the threads.
         if (threadBarrierMap[pthAddr] == pthMetadata.barrierMap().at(pthAddr))
         {
+            DPRINTF(STDebug,"Thread %d: last thread to reach barrier <0x%x>. Unblocking everyone\n", tcxt.threadId, pthAddr);
             for (auto tid : pthMetadata.barrierMap().at(pthAddr))
             {
                 // We always expect the thread to have more events after the
@@ -674,22 +688,20 @@ SynchroTraceReplayer::replayThreadAPI(ThreadContext& tcxt, CoreID coreId)
             fatal_if(threadBarrierMap.erase(pthAddr) != 1,
                      "Tried to clear barrier that doesn't exist! <0x%X>",
                      pthAddr);
+            perThreadBarrierBlocked[tcxt.threadId] = false;
             tcxt.evStream.pop();
             schedule(coreEvents[coreId],
                      curTick() + clockPeriod() * Cycles(pthCycles));
         }
         else
         {
+            DPRINTF(STDebug,"Thread %d blocked by barrier <0x%x>\n", tcxt.threadId, pthAddr);
             tcxt.status = ThreadStatus::BLOCKED_BARRIER;
+            perThreadBarrierBlocked[tcxt.threadId] = true;
             if (!tryCxtSwapAndSchedule(coreId))
                 schedule(coreEvents[coreId],
                          curTick() + clockPeriod() * Cycles(schedSliceCycles));
         }
-#endif
-        // ADARSH skip barrier wait
-        tcxt.evStream.pop();
-        schedule(coreEvents[coreId],
-                     curTick() + clockPeriod() * Cycles(pthCycles));
     }
         break;
 
@@ -900,11 +912,11 @@ SynchroTraceReplayer::processEodMarker(ThreadContext& tcxt, CoreID coreId)
         // translation: 1.4 micro sec = 1,400,000 ticks, invalidation: 2 x DM lat
         // when eodCtr == x and threadID == y we add invalidation latency, x and y is decided manually based on the benchmark and schedule
         #ifdef CACHING
-        if ((tcxt.eodCtr == 2) && (tcxt.threadId == 1)) {
-            latency += 1400000 + (2*RubySystem::getRealDisaggrMemLatency());
-            inform("sending invalidations");
+        //if ((tcxt.eodCtr == 2) && (tcxt.threadId == 1)) {
+            // latency += 1400000 + (2*RubySystem::getRealDisaggrMemLatency());
+            // inform("sending invalidations");
             // For optimized no-invalidations Bolt caching, comment above lines
-        }
+        //}
         #endif            
 
         // latency for subsequent requests in PUT is accounted for in msgRespRecv
@@ -1061,8 +1073,10 @@ SynchroTraceReplayer::msgRespRecv(CoreID coreId, PacketPtr pkt)
         if (bw_remaining == 0) {
             latency += RubySystem::getRealDisaggrMemLatency();
             bw_remaining = bw_multiplier;
+	    DPRINTF(STDebug, "reset bw_remaining\n");
             reset_bw_remaining++;
         }
+	DPRINTF(STDebug, "bw_remaining %d\n", bw_remaining);
         bw_remaining--;
         schedule(coreEvents[coreId], curTick() + latency);
     }
