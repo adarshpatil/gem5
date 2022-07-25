@@ -886,6 +886,7 @@ SynchroTraceReplayer::processEodMarker(ThreadContext& tcxt, CoreID coreId)
     // the core stalls for different time in msgresprecv depending on the phase
     tcxt.eodCtr++;
     inform("Reached EOD marker, on core %d thread %d eodCtr %d\n", coreId, tcxt.threadId, tcxt.eodCtr);
+    inform("sim_seconds %0.6f\n", curTick()/ (float) getClockFrequency());
     inform("current FaaS status %s\n", toString(tcxt.faasstatus));
     Stats::schedStatEvent(true, false, curTick(), 0);
     if(tcxt.faasstatus == FaaSStatus::GET) {
@@ -946,6 +947,7 @@ SynchroTraceReplayer::processEndMarker(ThreadContext& tcxt, CoreID coreId)
         tcxt.evStream.pop();
         inform("bw_remaining reset %d times\n", reset_bw_remaining);
         inform("end of events core %d thead %d", coreId, tcxt.threadId);
+        inform("sim_seconds %0.6f\n", curTick()/ (float) getClockFrequency());
         Stats::schedStatEvent(true, false, curTick(), 0);
 
         // it's okay if there's not another thread to schedule
