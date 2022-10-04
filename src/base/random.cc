@@ -52,7 +52,8 @@
 Random::Random()
 {
     // default random seed
-    init(5489);
+    // init(5489);
+    init(std::random_device{}());
 }
 
 Random::Random(uint32_t s)

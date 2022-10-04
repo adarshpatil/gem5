@@ -44,6 +44,8 @@
 #include "params/RubySystem.hh"
 #include "sim/clocked_object.hh"
 
+#include "base/random.hh"
+
 class Network;
 class AbstractController;
 
@@ -64,7 +66,18 @@ class RubySystem : public ClockedObject
 
     // ADARSH
     static Tick getCurDisaggrMemLatency() { return curDisaggrMemLatency; }
-    static Tick getRealDisaggrMemLatency() { return realDisaggrMemLatency; }
+    static Tick getRealDisaggrMemLatency() {
+      if (m_randomization) {
+        // Uses uniform_int_distribution random number with 40% deviation from mean
+        // Tick r = random_mt.random(realDisaggrMemLatency-200000, realDisaggrMemLatency+400000);
+        // Uses poisson_distribution random number
+        Tick r = random_mt.random(realDisaggrMemLatency);
+        inform("random DM lat %d\n", r);
+        return r;
+      }
+      else
+        return realDisaggrMemLatency;
+    }
     // sets curDisaggrMemLatency
     static void setDisaggrMemLatency(Tick latency) {
       // call this function as below

@@ -104,6 +104,14 @@ class Random : public Serializable
         return dist(gen);
     }
 
+    template <typename T>
+    typename std::enable_if<std::is_integral<T>::value, T>::type
+    random(T mean)
+    {
+        std::poisson_distribution<T> dist(mean);
+        return dist(gen);
+    }
+
     void serialize(CheckpointOut &cp) const override;
     void unserialize(CheckpointIn &cp) override;
 };

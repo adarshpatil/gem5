@@ -143,6 +143,8 @@ Ruby.create_system(options, False, system)
 system.ruby.clk_domain = SrcClockDomain(clock = options.ruby_clock,
                                         voltage_domain = system.voltage_domain)
 
+system.ruby.randomization = True
+
 # Tie the SynchroTrace tester ports to the ruby cpu ports
 assert(options.num_cpus == len(system.ruby._cpu_ports))
 for ruby_port in system.ruby._cpu_ports:

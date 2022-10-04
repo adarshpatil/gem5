@@ -77,7 +77,12 @@ RubySystem::RubySystem(const Params *p)
     // core scheduling accounts for disaggrmemlatency
     curDisaggrMemLatency = 1;
     faasput = false;
-    inform("setting disaggr_mem_latency %d ticks\n", curDisaggrMemLatency);
+
+    if (m_randomization){
+        inform("disaggr_mem_latency is random following uniform distribution with mean %d ticks\n", realDisaggrMemLatency);
+    } else {
+        inform("setting disaggr_mem_latency %d ticks\n", realDisaggrMemLatency);
+    }
 
     // Resize to the size of different machine types
     m_abstract_controls.resize(MachineType_NUM);
