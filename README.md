@@ -1,3 +1,13 @@
+# gem5 + SynchroTrace + Āpta
+This repository modifies SynchroTrace gem5 to add Āpta disaggregated memory by implementing
+* shared disaggregated memory between compute servers (simulated as mutliple processor sockets)
+* object-granularity reads and writes from disaggregated memory 
+* modified heirarchial MOESI_CMP_directory to perform object-granular coherence for disaggregated memory
+* 2 state protocol for disaggregated memory coherence
+
+See the parent repository [https://github.com/adarshpatil/apta](https://github.com/adarshpatil/apta) and the [paper](https://adar.sh/apta) for more details.
+
+---
 # SYNCHROTRACE
 
 ## What is it?
